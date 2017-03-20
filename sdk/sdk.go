@@ -97,7 +97,7 @@ func (sdk *Model) GetPlatform(version string) (sdkcomponent.Platform, bool) {
 }
 
 // GetSystemImage ...
-func (sdk *Model) GetSystemImage(platform string, abi string, componentType string) (sdkcomponent.SystemImage, bool) {
+func (sdk *Model) GetSystemImage(platform string, abi string, tag string) (sdkcomponent.SystemImage, bool) {
 	systemImages := []sdkcomponent.SystemImage{}
 
 	for _, systemImage := range sdk.systemImages {
@@ -106,23 +106,21 @@ func (sdk *Model) GetSystemImage(platform string, abi string, componentType stri
 		}
 	}
 
-	defaultComponentType := componentType
-	if componentType == "" {
-		defaultComponentType = "default"
+	defaultTag := tag
+	if tag == "" {
+		defaultTag = "default"
 	}
 
 	for _, systemImage := range systemImages {
-		if systemImage.Type == defaultComponentType {
+		if systemImage.Tag == defaultTag {
 			return systemImage, true
 		}
 	}
 
-	if componentType == "" {
-		defaultComponentType = "google_apis"
-	}
+	defaultTag = "google_apis"
 
 	for _, systemImage := range systemImages {
-		if systemImage.Type == defaultComponentType {
+		if systemImage.Tag == defaultTag {
 			return systemImage, true
 		}
 	}
@@ -222,7 +220,7 @@ func parseSDKOut(sdkOut string) (*Model, error) {
 			if len(split) == 4 {
 				sdk.addSystemImage(sdkcomponent.SystemImage{
 					Platform:     split[1],
-					Type:         split[2],
+					Tag:          split[2],
 					ABI:          split[3],
 					SDKStylePath: trimmedLine,
 				})
@@ -311,7 +309,7 @@ func parseLegacySDKOut(sdkOut string) (*Model, error) {
 				if match := regexp.MustCompile(androidTVPattern).FindStringSubmatch(legacySDKSytleName); len(match) == 3 {
 					sdk.addSystemImage(sdkcomponent.SystemImage{
 						Platform:           "android-" + match[2],
-						Type:               "android-tv",
+						Tag:                "android-tv",
 						ABI:                match[1],
 						LegacySDKStylePath: legacySDKSytleName,
 					})
@@ -323,7 +321,7 @@ func parseLegacySDKOut(sdkOut string) (*Model, error) {
 				if match := regexp.MustCompile(androidWearPattern).FindStringSubmatch(legacySDKSytleName); len(match) == 3 {
 					sdk.addSystemImage(sdkcomponent.SystemImage{
 						Platform:           "android-" + match[2],
-						Type:               "android-wear",
+						Tag:                "android-wear",
 						ABI:                match[1],
 						LegacySDKStylePath: legacySDKSytleName,
 					})
@@ -335,7 +333,7 @@ func parseLegacySDKOut(sdkOut string) (*Model, error) {
 				if match := regexp.MustCompile(googleAPIpattern).FindStringSubmatch(legacySDKSytleName); len(match) == 3 {
 					sdk.addSystemImage(sdkcomponent.SystemImage{
 						Platform:           "android-" + match[2],
-						Type:               "google_apis",
+						Tag:                "google_apis",
 						ABI:                match[1],
 						LegacySDKStylePath: legacySDKSytleName,
 					})
@@ -347,7 +345,7 @@ func parseLegacySDKOut(sdkOut string) (*Model, error) {
 				if match := regexp.MustCompile(androidPattern).FindStringSubmatch(legacySDKSytleName); len(match) == 3 {
 					sdk.addSystemImage(sdkcomponent.SystemImage{
 						Platform:           "android-" + match[2],
-						Type:               "android",
+						Tag:                "android",
 						ABI:                match[1],
 						LegacySDKStylePath: legacySDKSytleName,
 					})
