@@ -87,12 +87,12 @@ func (component SystemImage) GetSDKStylePath() string {
 		return component.SDKStylePath
 	}
 
-	componentTag := "default"
+	tag := "default"
 	if component.Tag != "" {
-		componentTag = component.Tag
+		tag = component.Tag
 	}
 
-	return fmt.Sprintf("system-images;%s;%s;%s", component.Platform, componentTag, component.ABI)
+	return fmt.Sprintf("system-images;%s;%s;%s", component.Platform, tag, component.ABI)
 }
 
 // GetLegacySDKStylePath ...

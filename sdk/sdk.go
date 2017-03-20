@@ -97,7 +97,7 @@ func (sdk *Model) GetPlatform(version string) (sdkcomponent.Platform, bool) {
 }
 
 // GetSystemImage ...
-func (sdk *Model) GetSystemImage(platform string, abi string, componentTag string) (sdkcomponent.SystemImage, bool) {
+func (sdk *Model) GetSystemImage(platform string, abi string, tag string) (sdkcomponent.SystemImage, bool) {
 	systemImages := []sdkcomponent.SystemImage{}
 
 	for _, systemImage := range sdk.systemImages {
@@ -106,23 +106,21 @@ func (sdk *Model) GetSystemImage(platform string, abi string, componentTag strin
 		}
 	}
 
-	defaultComponentTag := componentTag
-	if componentTag == "" {
-		defaultComponentTag = "default"
+	defaultTag := tag
+	if tag == "" {
+		defaultTag = "default"
 	}
 
 	for _, systemImage := range systemImages {
-		if systemImage.Tag == defaultComponentTag {
+		if systemImage.Tag == defaultTag {
 			return systemImage, true
 		}
 	}
 
-	if componentTag == "" {
-		defaultComponentTag = "google_apis"
-	}
+	defaultTag = "google_apis"
 
 	for _, systemImage := range systemImages {
-		if systemImage.Tag == defaultComponentTag {
+		if systemImage.Tag == defaultTag {
 			return systemImage, true
 		}
 	}
