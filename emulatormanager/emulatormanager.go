@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/bitrise-io/depman/pathutil"
 	"github.com/bitrise-io/go-utils/command"
+	"github.com/bitrise-io/go-utils/pathutil"
 )
 
 // Model ...
@@ -35,7 +35,7 @@ func New(androidHome string) (*Model, error) {
 // StartEmulatorCommand ...
 func (model Model) StartEmulatorCommand(name, skin string, options ...string) *command.Model {
 	args := []string{model.binPth, "-avd", name}
-	
+
 	if len(skin) == 0 {
 		args = append(args, "-noskin")
 	} else {
