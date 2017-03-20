@@ -10,7 +10,7 @@ func TestSystemImageComponent(t *testing.T) {
 	{
 		component := SystemImage{
 			Platform: "android-24",
-			Type:     "",
+			Tag:      "",
 			ABI:      "x86",
 		}
 
@@ -22,7 +22,7 @@ func TestSystemImageComponent(t *testing.T) {
 	{
 		component := SystemImage{
 			Platform: "android-24",
-			Type:     "default",
+			Tag:      "default",
 			ABI:      "x86",
 		}
 
@@ -34,7 +34,7 @@ func TestSystemImageComponent(t *testing.T) {
 	{
 		component := SystemImage{
 			Platform: "android-23",
-			Type:     "google_apis",
+			Tag:      "google_apis",
 			ABI:      "armeabi-v7a",
 		}
 
@@ -46,7 +46,7 @@ func TestSystemImageComponent(t *testing.T) {
 	{
 		component := SystemImage{
 			Platform: "android-23",
-			Type:     "android-tv",
+			Tag:      "android-tv",
 			ABI:      "armeabi-v7a",
 		}
 

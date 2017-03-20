@@ -7,47 +7,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-/*
-// GetSystemImage ...
-func (sdk *Model) GetSystemImage(platform string, abi string, componentType string) (sdkcomponent.SystemImage, bool) {
-	systemImages := []sdkcomponent.SystemImage{}
-
-	for _, systemImage := range sdk.systemImages {
-		if systemImage.Platform == platform && systemImage.ABI == abi {
-			systemImages = append(systemImages, systemImage)
-		}
-	}
-
-	if componentType == "" {
-		componentType = "default"
-	}
-
-	for _, systemImage := range systemImages {
-		if systemImage.Type == componentType {
-			return systemImage, true
-		}
-	}
-
-	if componentType == "" {
-		componentType = "google_apis"
-	}
-
-	for _, systemImage := range systemImages {
-		if systemImage.Type == componentType {
-			return systemImage, true
-		}
-	}
-
-	return sdkcomponent.SystemImage{}, false
-}
-*/
-
 func TestGetSystemImage(t *testing.T) {
 	sdk := Model{
 		systemImages: []sdkcomponent.SystemImage{
 			sdkcomponent.SystemImage{
 				Platform: "android-25",
-				Type:     "google_apis",
+				Tag:      "google_apis",
 				ABI:      "x86",
 			},
 		},
@@ -59,18 +24,18 @@ func TestGetSystemImage(t *testing.T) {
 		require.Equal(t, true, found)
 		require.Equal(t, sdkcomponent.SystemImage{
 			Platform: "android-25",
-			Type:     "google_apis",
+			Tag:      "google_apis",
 			ABI:      "x86",
 		}, systemImage)
 	}
 
-	t.Log("SystemImage exist - type not specified")
+	t.Log("SystemImage exist - Tag not specified")
 	{
 		systemImage, found := sdk.GetSystemImage("android-25", "x86", "")
 		require.Equal(t, true, found)
 		require.Equal(t, sdkcomponent.SystemImage{
 			Platform: "android-25",
-			Type:     "google_apis",
+			Tag:      "google_apis",
 			ABI:      "x86",
 		}, systemImage)
 	}
@@ -197,7 +162,7 @@ func TestAdd(t *testing.T) {
 		sdk.addSystemImage(sdkcomponent.SystemImage{
 			Platform: "android-23",
 			ABI:      "x86",
-			Type:     "google_apis",
+			Tag:      "google_apis",
 		})
 		require.Equal(t, 2, len(sdk.systemImages))
 		require.Equal(t, sdkcomponent.SystemImage{
@@ -207,7 +172,7 @@ func TestAdd(t *testing.T) {
 		require.Equal(t, sdkcomponent.SystemImage{
 			Platform: "android-23",
 			ABI:      "x86",
-			Type:     "google_apis",
+			Tag:      "google_apis",
 		}, sdk.systemImages[1])
 	}
 }
@@ -239,31 +204,31 @@ func TestParseSDKOut(t *testing.T) {
 	require.Equal(t, 5, len(sdk.systemImages))
 	require.Equal(t, sdkcomponent.SystemImage{
 		Platform:     "android-25",
-		Type:         "google_apis",
+		Tag:          "google_apis",
 		ABI:          "x86_64",
 		SDKStylePath: "system-images;android-25;google_apis;x86_64",
 	}, sdk.systemImages[0])
 	require.Equal(t, sdkcomponent.SystemImage{
 		Platform:     "android-10",
-		Type:         "default",
+		Tag:          "default",
 		ABI:          "armeabi-v7a",
 		SDKStylePath: "system-images;android-10;default;armeabi-v7a",
 	}, sdk.systemImages[1])
 	require.Equal(t, sdkcomponent.SystemImage{
 		Platform:     "android-10",
-		Type:         "google_apis",
+		Tag:          "google_apis",
 		ABI:          "armeabi-v7a",
 		SDKStylePath: "system-images;android-10;google_apis;armeabi-v7a",
 	}, sdk.systemImages[2])
 	require.Equal(t, sdkcomponent.SystemImage{
 		Platform:     "android-21",
-		Type:         "android-tv",
+		Tag:          "android-tv",
 		ABI:          "armeabi-v7a",
 		SDKStylePath: "system-images;android-21;android-tv;armeabi-v7a",
 	}, sdk.systemImages[3])
 	require.Equal(t, sdkcomponent.SystemImage{
 		Platform:     "android-23",
-		Type:         "android-wear",
+		Tag:          "android-wear",
 		ABI:          "armeabi-v7a",
 		SDKStylePath: "system-images;android-23;android-wear;armeabi-v7a",
 	}, sdk.systemImages[4])
@@ -288,55 +253,55 @@ func TestParseLegacySDKOut(t *testing.T) {
 	require.Equal(t, 9, len(sdk.systemImages))
 	require.Equal(t, sdkcomponent.SystemImage{
 		Platform:           "android-25",
-		Type:               "android-tv",
+		Tag:                "android-tv",
 		ABI:                "x86",
 		LegacySDKStylePath: "sys-img-x86-android-tv-25",
 	}, sdk.systemImages[0])
 	require.Equal(t, sdkcomponent.SystemImage{
 		Platform:           "android-25",
-		Type:               "android-wear",
+		Tag:                "android-wear",
 		ABI:                "armeabi-v7a",
 		LegacySDKStylePath: "sys-img-armeabi-v7a-android-wear-25",
 	}, sdk.systemImages[1])
 	require.Equal(t, sdkcomponent.SystemImage{
 		Platform:           "android-25",
-		Type:               "android-wear",
+		Tag:                "android-wear",
 		ABI:                "x86",
 		LegacySDKStylePath: "sys-img-x86-android-wear-25",
 	}, sdk.systemImages[2])
 	require.Equal(t, sdkcomponent.SystemImage{
 		Platform:           "android-25",
-		Type:               "google_apis",
+		Tag:                "google_apis",
 		ABI:                "arm64-v8a",
 		LegacySDKStylePath: "sys-img-arm64-v8a-google_apis-25",
 	}, sdk.systemImages[3])
 	require.Equal(t, sdkcomponent.SystemImage{
 		Platform:           "android-25",
-		Type:               "google_apis",
+		Tag:                "google_apis",
 		ABI:                "armeabi-v7a",
 		LegacySDKStylePath: "sys-img-armeabi-v7a-google_apis-25",
 	}, sdk.systemImages[4])
 	require.Equal(t, sdkcomponent.SystemImage{
 		Platform:           "android-25",
-		Type:               "google_apis",
+		Tag:                "google_apis",
 		ABI:                "x86_64",
 		LegacySDKStylePath: "sys-img-x86_64-google_apis-25",
 	}, sdk.systemImages[5])
 	require.Equal(t, sdkcomponent.SystemImage{
 		Platform:           "android-25",
-		Type:               "google_apis",
+		Tag:                "google_apis",
 		ABI:                "x86",
 		LegacySDKStylePath: "sys-img-x86-google_apis-25",
 	}, sdk.systemImages[6])
 	require.Equal(t, sdkcomponent.SystemImage{
 		Platform:           "android-24",
-		Type:               "android",
+		Tag:                "android",
 		ABI:                "arm64-v8a",
 		LegacySDKStylePath: "sys-img-arm64-v8a-android-24",
 	}, sdk.systemImages[7])
 	require.Equal(t, sdkcomponent.SystemImage{
 		Platform:           "android-24",
-		Type:               "android",
+		Tag:                "android",
 		ABI:                "armeabi-v7a",
 		LegacySDKStylePath: "sys-img-armeabi-v7a-android-24",
 	}, sdk.systemImages[8])
