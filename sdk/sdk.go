@@ -24,7 +24,7 @@ type Model struct {
 func New(androidHome string) (*Model, error) {
 	binPth := filepath.Join(androidHome, "tools", "bin", "sdkmanager")
 
-	legacy, err := sdkmanager.IsLegacySDKVersion(androidHome)
+	legacy, err := sdkmanager.IsLegacySDKManager(androidHome)
 	if err != nil {
 		return nil, err
 	} else if legacy {
