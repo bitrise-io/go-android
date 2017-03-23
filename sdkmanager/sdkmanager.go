@@ -52,6 +52,11 @@ func New(androidHome string) (*Model, error) {
 	}, nil
 }
 
+// IsLegacySDK ...
+func (model Model) IsLegacySDK() bool {
+	return model.legacy
+}
+
 // IsInstalled ...
 func (model Model) IsInstalled(component sdkcomponent.Model) (bool, error) {
 	relPth := component.InstallPathInAndroidHome()
