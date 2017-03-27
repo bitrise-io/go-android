@@ -7,6 +7,7 @@ import (
 
 	"github.com/bitrise-io/go-utils/command"
 	"github.com/bitrise-io/go-utils/pathutil"
+	"github.com/bitrise-tools/go-android/sdk"
 )
 
 // Model ...
@@ -15,21 +16,21 @@ type Model struct {
 }
 
 // New ...
-func New(androidHome string) (*Model, error) {
-	if exist, err := pathutil.IsDirExists(androidHome); err != nil {
+func New(sdk sdk.AndroidSdkInterface) (*Model, error) {
+	if exist, err := pathutil.IsDirExists(sdk.GetAndroidHome()); err != nil {
 		return nil, err
 	} else if !exist {
-		return nil, fmt.Errorf("android home not exists at: %s", androidHome)
+		return nil, fmt.Errorf("android home not exists at: %s", sdk.GetAndroidHome())
 	}
 
-	binPth := filepath.Join(androidHome, "emulator", "emulator")
+	binPth := filepath.Join(sdk.GetAndroidHome(), "emulator", "emulator")
 	exist, err := pathutil.IsPathExists(binPth)
 	if err != nil {
 		return nil, err
 	} else if !exist {
-		binPth = filepath.Join(androidHome, "tools", "emulator")
+		binPth = filepath.Join(sdk.GetAndroidHome(), "tools", "emulator")
 		if runtime.GOOS == "linux" {
-			binPth = filepath.Join(androidHome, "tools", "emulator64-arm")
+			binPth = filepath.Join(sdk.GetAndroidHome(), "tools", "emulator64-arm")
 		}
 	}
 
