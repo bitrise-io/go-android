@@ -17,12 +17,6 @@ type Model struct {
 
 // New ...
 func New(sdk sdk.AndroidSdkInterface) (*Model, error) {
-	if exist, err := pathutil.IsDirExists(sdk.GetAndroidHome()); err != nil {
-		return nil, err
-	} else if !exist {
-		return nil, fmt.Errorf("android home not exists at: %s", sdk.GetAndroidHome())
-	}
-
 	binPth := filepath.Join(sdk.GetAndroidHome(), "emulator", "emulator")
 	exist, err := pathutil.IsPathExists(binPth)
 	if err != nil {
