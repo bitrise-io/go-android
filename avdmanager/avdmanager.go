@@ -2,9 +2,8 @@ package avdmanager
 
 import (
 	"fmt"
-	"path/filepath"
-
 	"os"
+	"path/filepath"
 
 	"github.com/bitrise-io/go-utils/command"
 	"github.com/bitrise-io/go-utils/pathutil"
@@ -43,7 +42,8 @@ func New(sdk sdk.AndroidSdkInterface) (*Model, error) {
 		binPth = filepath.Join(sdk.GetAndroidHome(), "tools", "android")
 		sdkManager, err := sdkmanager.New(sdk)
 		if err == nil {
-			updateCmd := sdkManager.UpdateToolsCommand()
+			sdkToolComponent := sdkcomponent.SDKTool{}
+			updateCmd := sdkManager.InstallCommand(sdkToolComponent)
 			updateCmd.SetStderr(os.Stderr)
 			updateCmd.SetStdout(os.Stdout)
 			if err := updateCmd.Run(); err == nil {
