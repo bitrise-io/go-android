@@ -40,23 +40,18 @@ func New(sdk sdk.AndroidSdkInterface) (*Model, error) {
 	} else if legacyAvd && legacySdk {
 		binPth = filepath.Join(sdk.GetAndroidHome(), "tools", "android")
 	} else if legacyAvd && !legacySdk {
+		binPth = filepath.Join(sdk.GetAndroidHome(), "tools", "android")
 		sdkManager, err := sdkmanager.New(sdk)
-		if err != nil {
-			return nil, err
-		}
-
-		updateCmd := sdkManager.UpdateToolsCommand()
-		updateCmd.SetStderr(os.Stderr)
-		updateCmd.SetStdout(os.Stdout)
-		if err := updateCmd.Run(); err != nil {
-			return nil, err
-		}
-
-		legacyAvd, err = IsLegacyAVDManager(sdk.GetAndroidHome())
-		if err != nil {
-			return nil, err
-		} else if legacyAvd {
-			binPth = filepath.Join(sdk.GetAndroidHome(), "tools", "android")
+		if err == nil {
+			updateCmd := sdkManager.UpdateToolsCommand()
+			updateCmd.SetStderr(os.Stderr)
+			updateCmd.SetStdout(os.Stdout)
+			if err := updateCmd.Run(); err == nil {
+				legacyAvd, err = IsLegacyAVDManager(sdk.GetAndroidHome())
+				if err == nil && !legacyAvd {
+					binPth = filepath.Join(sdk.GetAndroidHome(), "tools", "bin", "avdmanager")
+				}
+			}
 		}
 	}
 
