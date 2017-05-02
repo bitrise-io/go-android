@@ -37,7 +37,7 @@ func (component SDKTool) GetLegacySDKStylePath() string {
 
 // InstallPathInAndroidHome ...
 func (component SDKTool) InstallPathInAndroidHome() string {
-	return ""
+	return "tools"
 }
 
 // BuildTool ...
