@@ -27,16 +27,6 @@ func New(sdk sdk.AndroidSdkInterface) (*Model, error) {
 		env = "DYLD_LIBRARY_PATH=" + filepath.Join(sdk.GetAndroidHome(), "emulator", "lib64", "qt", "lib")
 	}
 
-	exist, err := pathutil.IsPathExists(binPth)
-	if err != nil {
-		return nil, err
-	} else if !exist {
-		binPth = filepath.Join(sdk.GetAndroidHome(), "tools", "emulator")
-		if runtime.GOOS == "linux" {
-			binPth = filepath.Join(sdk.GetAndroidHome(), "tools", "emulator64-arm")
-		}
-	}
-
 	if exist, err := pathutil.IsPathExists(binPth); err != nil {
 		return nil, fmt.Errorf("failed to check if emulator exist, error: %s", err)
 	} else if !exist {
