@@ -52,7 +52,6 @@ func TestLib64QTLibEnv(t *testing.T) {
 	tmpDir, err := pathutil.NormalizedOSTempDirPath("")
 	require.NoError(t, err)
 
-	// "emulator", "lib64", "qt", "lib"
 	lib64QTDir := filepath.Join(tmpDir, "emulator", "lib64", "qt", "lib")
 	require.NoError(t, os.MkdirAll(lib64QTDir, 0700))
 
