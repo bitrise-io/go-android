@@ -80,19 +80,14 @@ func New(sdk sdk.AndroidSdkInterface) (*Model, error) {
 // StartEmulatorCommand ...
 func (model Model) StartEmulatorCommand(name, skin string, options ...string) *command.Model {
 	args := []string{model.binPth, "-avd", name}
-
 	if len(skin) == 0 {
 		args = append(args, "-noskin")
 	} else {
 		args = append(args, "-skin", skin)
 	}
-
 	args = append(args, options...)
 
-	commandModel := command.New(args[0], args[1:]...)
-	if len(model.envs) > 0 {
-		commandModel = command.New(args[0], args[1:]...).AppendEnvs(model.envs...)
-	}
+	commandModel := command.New(args[0], args[1:]...).AppendEnvs(model.envs...)
 
 	return commandModel
 }
