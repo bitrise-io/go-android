@@ -94,7 +94,7 @@ func TestLib64QTLibEnv(t *testing.T) {
 
 	t.Log("lib qt env on linux")
 	{
-		env, err := lib64QTLibEnv(tmpDir, "linux")
+		env, err := lib64QTLibEnv(tmpDir, "linux", false)
 		require.NoError(t, err)
 		require.Equal(t, true, strings.HasPrefix(env, "LD_LIBRARY_PATH="), env)
 		require.Equal(t, true, strings.HasSuffix(env, "emulator/lib64/qt/lib"), env)
@@ -102,7 +102,7 @@ func TestLib64QTLibEnv(t *testing.T) {
 
 	t.Log("lib qt env on osx")
 	{
-		env, err := lib64QTLibEnv(tmpDir, "darwin")
+		env, err := lib64QTLibEnv(tmpDir, "darwin", false)
 		require.NoError(t, err)
 		require.Equal(t, true, strings.HasPrefix(env, "DYLD_LIBRARY_PATH="), env)
 		require.Equal(t, true, strings.HasSuffix(env, "emulator/lib64/qt/lib"), env)
@@ -112,12 +112,12 @@ func TestLib64QTLibEnv(t *testing.T) {
 	{
 		require.NoError(t, os.RemoveAll(lib64QTDir))
 
-		env, err := lib64QTLibEnv(tmpDir, "linux")
+		env, err := lib64QTLibEnv(tmpDir, "linux", false)
 		require.Error(t, err)
 		require.Equal(t, true, strings.HasPrefix(err.Error(), "qt lib does not exist at:"))
 		require.Equal(t, "", env)
 
-		env, err = lib64QTLibEnv(tmpDir, "darwin")
+		env, err = lib64QTLibEnv(tmpDir, "darwin", false)
 		require.Error(t, err)
 		require.Equal(t, true, strings.HasPrefix(err.Error(), "qt lib does not exist at:"))
 		require.Equal(t, "", env)
@@ -125,7 +125,54 @@ func TestLib64QTLibEnv(t *testing.T) {
 
 	t.Log("unspported os")
 	{
-		env, err := lib64QTLibEnv(tmpDir, "windows")
+		env, err := lib64QTLibEnv(tmpDir, "windows", false)
+		require.Error(t, err)
+		require.EqualError(t, err, "unsupported os windows")
+		require.Equal(t, "", env)
+	}
+}
+
+func TestLegacyLib64QTLibEnv(t *testing.T) {
+	tmpDir, err := pathutil.NormalizedOSTempDirPath("")
+	require.NoError(t, err)
+
+	lib64QTDir := filepath.Join(tmpDir, "tools", "lib64", "qt", "lib")
+	require.NoError(t, os.MkdirAll(lib64QTDir, 0700))
+
+	t.Log("lib qt env on linux")
+	{
+		env, err := lib64QTLibEnv(tmpDir, "linux", true)
+		require.NoError(t, err)
+		require.Equal(t, true, strings.HasPrefix(env, "LD_LIBRARY_PATH="), env)
+		require.Equal(t, true, strings.HasSuffix(env, "tools/lib64/qt/lib"), env)
+	}
+
+	t.Log("lib qt env on osx")
+	{
+		env, err := lib64QTLibEnv(tmpDir, "darwin", true)
+		require.NoError(t, err)
+		require.Equal(t, true, strings.HasPrefix(env, "DYLD_LIBRARY_PATH="), env)
+		require.Equal(t, true, strings.HasSuffix(env, "tools/lib64/qt/lib"), env)
+	}
+
+	t.Log("lib qt missing")
+	{
+		require.NoError(t, os.RemoveAll(lib64QTDir))
+
+		env, err := lib64QTLibEnv(tmpDir, "linux", true)
+		require.Error(t, err)
+		require.Equal(t, true, strings.HasPrefix(err.Error(), "qt lib does not exist at:"))
+		require.Equal(t, "", env)
+
+		env, err = lib64QTLibEnv(tmpDir, "darwin", true)
+		require.Error(t, err)
+		require.Equal(t, true, strings.HasPrefix(err.Error(), "qt lib does not exist at:"))
+		require.Equal(t, "", env)
+	}
+
+	t.Log("unspported os")
+	{
+		env, err := lib64QTLibEnv(tmpDir, "windows", true)
 		require.Error(t, err)
 		require.EqualError(t, err, "unsupported os windows")
 		require.Equal(t, "", env)
