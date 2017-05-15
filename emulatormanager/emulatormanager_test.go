@@ -26,7 +26,7 @@ func TestEmulatorBinPth(t *testing.T) {
 
 	t.Log("prefer emulator64-arm over emulator")
 	{
-		pth, err := emulatorBinPth(tmpDir)
+		pth, err := emulatorBinPth(tmpDir, false)
 		require.NoError(t, err)
 		require.Equal(t, true, strings.Contains(pth, filepath.Join("emulator", "emulator64-arm")), pth)
 	}
@@ -34,7 +34,7 @@ func TestEmulatorBinPth(t *testing.T) {
 	t.Log("fallback to emulator")
 	{
 		require.NoError(t, os.RemoveAll(emulator64Pth))
-		pth, err := emulatorBinPth(tmpDir)
+		pth, err := emulatorBinPth(tmpDir, false)
 		require.NoError(t, err)
 		require.Equal(t, true, strings.Contains(pth, filepath.Join("emulator", "emulator")), pth)
 	}
@@ -42,8 +42,45 @@ func TestEmulatorBinPth(t *testing.T) {
 	t.Log("fail if no emulator bin found")
 	{
 		require.NoError(t, os.RemoveAll(emulatorPth))
-		pth, err := emulatorBinPth(tmpDir)
+		pth, err := emulatorBinPth(tmpDir, false)
 		require.EqualError(t, err, "no emulator binary found in $ANDROID_HOME/emulator")
+		require.Equal(t, "", pth)
+	}
+}
+
+func TestLegacyEmulatorBinPth(t *testing.T) {
+	tmpDir, err := pathutil.NormalizedOSTempDirPath("")
+	require.NoError(t, err)
+
+	emulatorDir := filepath.Join(tmpDir, "tools")
+	require.NoError(t, os.MkdirAll(emulatorDir, 0700))
+
+	emulatorPth := filepath.Join(emulatorDir, "emulator")
+	require.NoError(t, fileutil.WriteStringToFile(emulatorPth, ""))
+
+	emulator64Pth := filepath.Join(emulatorDir, "emulator64-arm")
+	require.NoError(t, fileutil.WriteStringToFile(emulator64Pth, ""))
+
+	t.Log("prefer emulator64-arm over emulator")
+	{
+		pth, err := emulatorBinPth(tmpDir, true)
+		require.NoError(t, err)
+		require.Equal(t, true, strings.Contains(pth, filepath.Join("tools", "emulator64-arm")), pth)
+	}
+
+	t.Log("fallback to emulator")
+	{
+		require.NoError(t, os.RemoveAll(emulator64Pth))
+		pth, err := emulatorBinPth(tmpDir, true)
+		require.NoError(t, err)
+		require.Equal(t, true, strings.Contains(pth, filepath.Join("tools", "emulator")), pth)
+	}
+
+	t.Log("fail if no emulator bin found")
+	{
+		require.NoError(t, os.RemoveAll(emulatorPth))
+		pth, err := emulatorBinPth(tmpDir, true)
+		require.EqualError(t, err, "no emulator binary found in $ANDROID_HOME/tools")
 		require.Equal(t, "", pth)
 	}
 }
