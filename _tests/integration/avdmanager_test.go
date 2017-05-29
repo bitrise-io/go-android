@@ -49,13 +49,13 @@ func TestIntegrity(t *testing.T) {
 
 func getEmulatorConfigList() []emulator {
 	return []emulator{
-		emulator{platform: "android-17", tag: "default", abi: "mips"},
-		emulator{platform: "android-24", tag: "default", abi: "armeabi-v7a"},
-		emulator{platform: "android-24", tag: "default", abi: "arm64-v8a"},
 		emulator{platform: "android-24", tag: "google_apis", abi: "armeabi-v7a"},
 		emulator{platform: "android-24", tag: "google_apis", abi: "arm64-v8a"},
 		emulator{platform: "android-25", tag: "android-wear", abi: "armeabi-v7a"},
 		emulator{platform: "android-23", tag: "android-tv", abi: "armeabi-v7a"},
+		emulator{platform: "android-24", tag: "default", abi: "armeabi-v7a"},
+		emulator{platform: "android-24", tag: "default", abi: "arm64-v8a"},
+		emulator{platform: "android-17", tag: "default", abi: "mips"},
 	}
 }
 
@@ -212,6 +212,9 @@ func startEmulator(t *testing.T) {
 		for outScanner.Scan() {
 			line := outScanner.Text()
 			fmt.Println(line)
+			if strings.Contains(strings.ToLower(line), "invalid cpu architecture") {
+				require.FailNow(t, line)
+			}
 		}
 	}()
 	err = outScanner.Err()
