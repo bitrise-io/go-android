@@ -60,9 +60,9 @@ func getEmulatorConfigList() []emulator {
 }
 
 func createEmulator(t *testing.T, platform string, tag string, abi string) {
-	t.Logf("\nRunning test: %s - %s - %s", platform, tag, abi)
+	log.Printf("\nRunning test: %s - %s - %s", platform, tag, abi)
 
-	t.Log("\n-Check if platform installed")
+	log.Printf("\n-Check if platform installed")
 
 	androidSdk, err := sdk.New(os.Getenv("ANDROID_HOME"))
 	require.NoError(t, err)
@@ -77,16 +77,16 @@ func createEmulator(t *testing.T, platform string, tag string, abi string) {
 	platformInstalled, err := manager.IsInstalled(platformComponent)
 	require.NoError(t, err)
 
-	t.Logf("\n-installed: %v", platformInstalled)
+	log.Printf("\n-installed: %v", platformInstalled)
 
 	if !platformInstalled {
 
-		t.Logf("\n-Installing: %s", platform)
+		log.Printf("\n-Installing: %s", platform)
 
 		installCmd := manager.InstallCommand(platformComponent)
 		installCmd.SetStdin(strings.NewReader("y"))
 
-		t.Logf("\n-$ %s", installCmd.PrintableCommandArgs())
+		log.Printf("\n-$ %s", installCmd.PrintableCommandArgs())
 
 		out, err := installCmd.RunAndReturnTrimmedCombinedOutput()
 		require.NoError(t, err, out)
@@ -95,10 +95,10 @@ func createEmulator(t *testing.T, platform string, tag string, abi string) {
 		require.NoError(t, err)
 		require.Equal(t, true, installed)
 
-		t.Logf("\n-Installed")
+		log.Printf("\n-Installed")
 	}
 
-	t.Logf("\n-Check if system image installed")
+	log.Printf("\n-Check if system image installed")
 
 	systemImageComponent := sdkcomponent.SystemImage{
 		Platform: platform,
@@ -106,20 +106,20 @@ func createEmulator(t *testing.T, platform string, tag string, abi string) {
 		ABI:      abi,
 	}
 
-	t.Logf("\n-Checking path: %s", systemImageComponent.InstallPathInAndroidHome())
+	log.Printf("\n-Checking path: %s", systemImageComponent.InstallPathInAndroidHome())
 
 	systemImageInstalled, err := manager.IsInstalled(systemImageComponent)
 	require.NoError(t, err)
 
-	t.Logf("\n-installed: %v", systemImageInstalled)
+	log.Printf("\n-installed: %v", systemImageInstalled)
 
 	if !systemImageInstalled {
-		t.Logf("\n-Installing system image (platform: %s abi: %s tag: %s)", systemImageComponent.Platform, systemImageComponent.ABI, systemImageComponent.Tag)
+		log.Printf("\n-Installing system image (platform: %s abi: %s tag: %s)", systemImageComponent.Platform, systemImageComponent.ABI, systemImageComponent.Tag)
 
 		installCmd := manager.InstallCommand(systemImageComponent)
 		installCmd.SetStdin(strings.NewReader("y"))
 
-		t.Logf("\n-$ %s", installCmd.PrintableCommandArgs())
+		log.Printf("\n-$ %s", installCmd.PrintableCommandArgs())
 
 		out, err := installCmd.RunAndReturnTrimmedCombinedOutput()
 		require.NoError(t, err, out)
@@ -128,10 +128,10 @@ func createEmulator(t *testing.T, platform string, tag string, abi string) {
 		require.NoError(t, err)
 		require.Equal(t, true, installed)
 
-		t.Logf("\n-Installed")
+		log.Printf("\n-Installed")
 	}
 
-	t.Logf("\n-Creating AVD image")
+	log.Printf("\n-Creating AVD image")
 
 	avdManager, err := avdmanager.New(androidSdk)
 	require.NoError(t, err)
@@ -139,15 +139,15 @@ func createEmulator(t *testing.T, platform string, tag string, abi string) {
 	cmd := avdManager.CreateAVDCommand(testEmulatorName, systemImageComponent)
 	cmd.SetStdin(strings.NewReader("n"))
 
-	t.Logf("\n-$ %s", cmd.PrintableCommandArgs())
+	log.Printf("\n-$ %s", cmd.PrintableCommandArgs())
 
 	out, err := cmd.RunAndReturnTrimmedCombinedOutput()
 	require.NoError(t, err, out)
-	t.Logf("\n...DONE...\n\n")
+	log.Printf("\n...DONE...\n\n")
 }
 
 func startEmulator(t *testing.T) {
-	t.Logf("Validate AVD image")
+	log.Printf("Validate AVD image")
 
 	avdImages, err := listAVDImages()
 	require.NoError(t, err)
