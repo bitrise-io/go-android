@@ -293,7 +293,10 @@ func startEmulator(t *testing.T) {
 	select {
 	case <-time.After(time.Duration(timeout) * time.Second):
 		err := startEmulatorCmd.Process.Kill()
-		require.FailNow(t, "Boot timed out...", timeout, err)
+		if err != nil {
+			log.Warnf("Failed to kill process: %s", err)
+		}
+		require.FailNow(t, "Boot timed out...")
 
 	case err := <-e:
 		require.NoError(t, err)
