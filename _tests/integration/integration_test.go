@@ -294,7 +294,7 @@ func startEmulator(t *testing.T) {
 	case <-time.After(time.Duration(timeout) * time.Second):
 		err := startEmulatorCmd.Process.Kill()
 		if err != nil {
-			log.Warnf("Failed to kill process: %s", err)
+			log.Warnf("failed to kill process: %s", err)
 		}
 		require.FailNow(t, "Boot timed out...")
 
