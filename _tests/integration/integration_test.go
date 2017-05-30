@@ -212,9 +212,6 @@ func startEmulator(t *testing.T) {
 		for outScanner.Scan() {
 			line := outScanner.Text()
 			fmt.Println(line)
-			if strings.Contains(strings.ToLower(line), "invalid cpu architecture") {
-				require.FailNow(t, line)
-			}
 		}
 	}()
 	err = outScanner.Err()
@@ -296,8 +293,7 @@ func startEmulator(t *testing.T) {
 	select {
 	case <-time.After(time.Duration(timeout) * time.Second):
 		err := startEmulatorCmd.Process.Kill()
-		require.NoError(t, err)
-		require.FailNow(t, "Boot timed out...", timeout)
+		require.FailNow(t, "Boot timed out...", timeout, err)
 
 	case err := <-e:
 		require.NoError(t, err)

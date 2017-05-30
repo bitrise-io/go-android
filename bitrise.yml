@@ -81,4 +81,4 @@ workflows:
             #!/bin/bash
             echo "Running integration tests ..."
             set -ex
-            go test -v ./_tests/integration/... -timeout 90m
+            go test -v ./_tests/integration/... -timeout 120m
