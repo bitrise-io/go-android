@@ -40,7 +40,7 @@ func TestIsLegacyAVDManager(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestIntegrity(t *testing.T) {
+func TestCreateAndStartEmulator(t *testing.T) {
 	for _, emu := range getEmulatorConfigList() {
 		createEmulator(t, emu.platform, emu.tag, emu.abi)
 		startEmulator(t)
@@ -52,14 +52,12 @@ func getEmulatorConfigList() []emulator {
 		emulator{platform: "android-24", tag: "google_apis", abi: "armeabi-v7a"},
 		emulator{platform: "android-25", tag: "android-wear", abi: "armeabi-v7a"},
 		emulator{platform: "android-23", tag: "android-tv", abi: "armeabi-v7a"},
-		emulator{platform: "android-24", tag: "default", abi: "armeabi-v7a"},
+		emulator{platform: "android-19", tag: "default", abi: "armeabi-v7a"},
 	}
 }
 
 func createEmulator(t *testing.T, platform string, tag string, abi string) {
-	log.Printf("\nRunning test: %s - %s - %s", platform, tag, abi)
-
-	log.Printf("\n-Check if platform installed")
+	t.Logf("Create emulator: %s - %s - %s", platform, tag, abi)
 
 	androidSdk, err := sdk.New(os.Getenv("ANDROID_HOME"))
 	require.NoError(t, err)
@@ -74,16 +72,13 @@ func createEmulator(t *testing.T, platform string, tag string, abi string) {
 	platformInstalled, err := manager.IsInstalled(platformComponent)
 	require.NoError(t, err)
 
-	log.Printf("\n-installed: %v", platformInstalled)
-
 	if !platformInstalled {
-
-		log.Printf("\n-Installing: %s", platform)
+		t.Logf("Installing platform: %s", platform)
 
 		installCmd := manager.InstallCommand(platformComponent)
 		installCmd.SetStdin(strings.NewReader("y"))
 
-		log.Printf("\n-$ %s", installCmd.PrintableCommandArgs())
+		t.Logf("$ %s", installCmd.PrintableCommandArgs())
 
 		out, err := installCmd.RunAndReturnTrimmedCombinedOutput()
 		require.NoError(t, err, out)
@@ -91,11 +86,7 @@ func createEmulator(t *testing.T, platform string, tag string, abi string) {
 		installed, err := manager.IsInstalled(platformComponent)
 		require.NoError(t, err)
 		require.Equal(t, true, installed)
-
-		log.Printf("\n-Installed")
 	}
-
-	log.Printf("\n-Check if system image installed")
 
 	systemImageComponent := sdkcomponent.SystemImage{
 		Platform: platform,
@@ -103,20 +94,16 @@ func createEmulator(t *testing.T, platform string, tag string, abi string) {
 		ABI:      abi,
 	}
 
-	log.Printf("\n-Checking path: %s", systemImageComponent.InstallPathInAndroidHome())
-
 	systemImageInstalled, err := manager.IsInstalled(systemImageComponent)
 	require.NoError(t, err)
 
-	log.Printf("\n-installed: %v", systemImageInstalled)
-
 	if !systemImageInstalled {
-		log.Printf("\n-Installing system image (platform: %s abi: %s tag: %s)", systemImageComponent.Platform, systemImageComponent.ABI, systemImageComponent.Tag)
+		t.Logf("Installing system image (platform: %s abi: %s tag: %s)", systemImageComponent.Platform, systemImageComponent.ABI, systemImageComponent.Tag)
 
 		installCmd := manager.InstallCommand(systemImageComponent)
 		installCmd.SetStdin(strings.NewReader("y"))
 
-		log.Printf("\n-$ %s", installCmd.PrintableCommandArgs())
+		t.Logf("$ %s", installCmd.PrintableCommandArgs())
 
 		out, err := installCmd.RunAndReturnTrimmedCombinedOutput()
 		require.NoError(t, err, out)
@@ -124,11 +111,7 @@ func createEmulator(t *testing.T, platform string, tag string, abi string) {
 		installed, err := manager.IsInstalled(systemImageComponent)
 		require.NoError(t, err)
 		require.Equal(t, true, installed)
-
-		log.Printf("\n-Installed")
 	}
-
-	log.Printf("\n-Creating AVD image")
 
 	avdManager, err := avdmanager.New(androidSdk)
 	require.NoError(t, err)
@@ -136,33 +119,21 @@ func createEmulator(t *testing.T, platform string, tag string, abi string) {
 	cmd := avdManager.CreateAVDCommand(testEmulatorName, systemImageComponent)
 	cmd.SetStdin(strings.NewReader("n"))
 
-	log.Printf("\n-$ %s", cmd.PrintableCommandArgs())
+	t.Logf("$ %s", cmd.PrintableCommandArgs())
 
 	out, err := cmd.RunAndReturnTrimmedCombinedOutput()
 	require.NoError(t, err, out)
-	log.Printf("\n...DONE...\n\n")
 }
 
 func startEmulator(t *testing.T) {
-	log.Printf("Validate AVD image")
+	t.Logf("Start emulator")
 
 	avdImages, err := listAVDImages()
 	require.NoError(t, err)
 
 	if !sliceutil.IsStringInSlice(testEmulatorName, avdImages) {
-
-		if len(avdImages) > 0 {
-			log.Printf("Available avd images:")
-			for _, avdImage := range avdImages {
-				log.Printf("* %s", avdImage)
-			}
-		}
-
-		os.Exit(1)
+		require.FailNow(t, "No emulator found with name: "+testEmulatorName)
 	}
-
-	log.Donef("AVD image (%s) exist", testEmulatorName)
-	// ---
 
 	androidSdk, err := sdk.New(os.Getenv("ANDROID_HOME"))
 	require.NoError(t, err)
@@ -170,28 +141,11 @@ func startEmulator(t *testing.T) {
 	adb, err := adbmanager.New(androidSdk)
 	require.NoError(t, err)
 
-	//
-	// Print running devices Info
 	deviceStateMap, err := runningDeviceInfos(*adb)
 	require.NoError(t, err)
 
-	if len(deviceStateMap) > 0 {
-		fmt.Println()
-		log.Infof("Running devices:")
-
-		for serial, state := range deviceStateMap {
-			log.Printf("* %s (%s)", serial, state)
-		}
-	}
-	// ---
-
 	emulator, err := emulatormanager.New(androidSdk)
 	require.NoError(t, err)
-
-	//
-	// Start AVD image
-	fmt.Println()
-	log.Infof("Start AVD image")
 
 	options := []string{"-no-boot-anim", "-no-window"}
 
@@ -200,7 +154,6 @@ func startEmulator(t *testing.T) {
 
 	e := make(chan error)
 
-	// Redirect output
 	stdoutReader, err := startEmulatorCmd.StdoutPipe()
 	require.NoError(t, err)
 
@@ -214,7 +167,6 @@ func startEmulator(t *testing.T) {
 	err = outScanner.Err()
 	require.NoError(t, err)
 
-	// Redirect error
 	stderrReader, err := startEmulatorCmd.StderrPipe()
 	require.NoError(t, err)
 
@@ -227,14 +179,11 @@ func startEmulator(t *testing.T) {
 	}()
 	err = errScanner.Err()
 	require.NoError(t, err)
-	// ---
 
 	serial := ""
 
 	go func() {
-		// Start emulator
-		log.Printf("$ %s", command.PrintableCommandArgs(false, startEmulatorCmd.Args))
-		fmt.Println()
+		t.Logf("$ %s", command.PrintableCommandArgs(false, startEmulatorCmd.Args))
 
 		if err := startEmulatorCommand.Run(); err != nil {
 			e <- err
@@ -243,11 +192,9 @@ func startEmulator(t *testing.T) {
 	}()
 
 	go func() {
-		// Wait until device appears in device list
+		t.Logf("Checking for started device serial...")
 		for len(serial) == 0 {
 			time.Sleep(5 * time.Second)
-
-			log.Printf("> Checking for started device serial...")
 
 			currentDeviceStateMap, err := runningDeviceInfos(*adb)
 			if err != nil {
@@ -257,16 +204,12 @@ func startEmulator(t *testing.T) {
 
 			serial = currentlyStartedDeviceSerial(deviceStateMap, currentDeviceStateMap)
 		}
-
-		log.Donef("> Started device serial: %s", serial)
-
-		// Wait until device is booted
+		t.Logf("Started device serial: %s", serial)
 
 		bootInProgress := true
+		t.Log("Wait for emulator to boot...")
 		for bootInProgress {
 			time.Sleep(5 * time.Second)
-
-			log.Printf("> Checking if device booted...")
 
 			booted, err := adb.IsDeviceBooted(serial)
 			if err != nil {
@@ -280,7 +223,7 @@ func startEmulator(t *testing.T) {
 		err := adb.UnlockDevice(serial)
 		require.NoError(t, err)
 
-		log.Donef("> Device booted")
+		log.Donef("Emulator booted")
 
 		e <- nil
 	}()
@@ -291,21 +234,18 @@ func startEmulator(t *testing.T) {
 	case <-time.After(time.Duration(timeout) * time.Second):
 		err := startEmulatorCmd.Process.Kill()
 		if err != nil {
-			log.Warnf("failed to kill process: %s", err)
+			t.Logf("failed to kill process: %s", err)
 		}
 		require.FailNow(t, "Boot timed out...")
 
 	case err := <-e:
 		require.NoError(t, err)
-
 	}
-	// ---
-	os.Setenv("EMULATOR_SERIAL", serial)
 
-	fmt.Println()
-	log.Donef("Emulator (%s) booted", serial)
 	err = startEmulatorCmd.Process.Kill()
-	require.NoError(t, err)
+	if err != nil {
+		t.Logf("failed to kill process: %s", err)
+	}
 }
 
 func listAVDImages() ([]string, error) {
@@ -362,8 +302,6 @@ func runningDeviceInfos(adb adbmanager.Model) (map[string]string, error) {
 		return map[string]string{}, fmt.Errorf("command failed, error: %s", err)
 	}
 
-	// List of devices attached
-	// emulator-5554	device
 	deviceListItemPattern := `^(?P<emulator>emulator-\d*)[\s+](?P<state>.*)`
 	deviceListItemRegexp := regexp.MustCompile(deviceListItemPattern)
 
