@@ -116,8 +116,7 @@ func TestLegacyLibEnv(t *testing.T) {
 		env, err := lib64Env(tmpDir, "linux", true)
 		require.NoError(t, err)
 		require.Equal(t, true, strings.HasPrefix(env, "LD_LIBRARY_PATH="), env)
-		require.Equal(t, true, strings.Contains(env, "tools/lib64:"), env)
-		require.Equal(t, true, strings.HasSuffix(env, "tools/lib64/qt/lib"), env)
+		require.Equal(t, true, strings.HasSuffix(env, "tools/lib64"), env)
 	}
 
 	t.Log("lib env on osx")
@@ -125,23 +124,7 @@ func TestLegacyLibEnv(t *testing.T) {
 		env, err := lib64Env(tmpDir, "darwin", true)
 		require.NoError(t, err)
 		require.Equal(t, true, strings.HasPrefix(env, "DYLD_LIBRARY_PATH="), env)
-		require.Equal(t, true, strings.Contains(env, "tools/lib64:"), env)
-		require.Equal(t, true, strings.HasSuffix(env, "tools/lib64/qt/lib"), env)
-	}
-
-	t.Log("lib qt missing")
-	{
-		require.NoError(t, os.RemoveAll(lib64QTLibDir))
-
-		env, err := lib64Env(tmpDir, "linux", true)
-		require.Error(t, err)
-		require.Equal(t, true, strings.HasPrefix(err.Error(), "qt lib does not exist at:"))
-		require.Equal(t, "", env)
-
-		env, err = lib64Env(tmpDir, "darwin", true)
-		require.Error(t, err)
-		require.Equal(t, true, strings.HasPrefix(err.Error(), "qt lib does not exist at:"))
-		require.Equal(t, "", env)
+		require.Equal(t, true, strings.HasSuffix(env, "tools/lib64"), env)
 	}
 
 	t.Log("unspported os")
