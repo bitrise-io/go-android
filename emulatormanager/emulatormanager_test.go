@@ -21,24 +21,6 @@ func TestEmulatorBinPth(t *testing.T) {
 	emulatorPth := filepath.Join(emulatorDir, "emulator")
 	require.NoError(t, fileutil.WriteStringToFile(emulatorPth, ""))
 
-	emulator64Pth := filepath.Join(emulatorDir, "emulator64-arm")
-	require.NoError(t, fileutil.WriteStringToFile(emulator64Pth, ""))
-
-	t.Log("prefer emulator64-arm over emulator")
-	{
-		pth, err := emulatorBinPth(tmpDir, false)
-		require.NoError(t, err)
-		require.Equal(t, true, strings.Contains(pth, filepath.Join("emulator", "emulator64-arm")), pth)
-	}
-
-	t.Log("fallback to emulator")
-	{
-		require.NoError(t, os.RemoveAll(emulator64Pth))
-		pth, err := emulatorBinPth(tmpDir, false)
-		require.NoError(t, err)
-		require.Equal(t, true, strings.Contains(pth, filepath.Join("emulator", "emulator")), pth)
-	}
-
 	t.Log("fail if no emulator bin found")
 	{
 		require.NoError(t, os.RemoveAll(emulatorPth))
@@ -58,24 +40,6 @@ func TestLegacyEmulatorBinPth(t *testing.T) {
 	emulatorPth := filepath.Join(emulatorDir, "emulator")
 	require.NoError(t, fileutil.WriteStringToFile(emulatorPth, ""))
 
-	emulator64Pth := filepath.Join(emulatorDir, "emulator64-arm")
-	require.NoError(t, fileutil.WriteStringToFile(emulator64Pth, ""))
-
-	t.Log("prefer emulator64-arm over emulator")
-	{
-		pth, err := emulatorBinPth(tmpDir, true)
-		require.NoError(t, err)
-		require.Equal(t, true, strings.Contains(pth, filepath.Join("tools", "emulator64-arm")), pth)
-	}
-
-	t.Log("fallback to emulator")
-	{
-		require.NoError(t, os.RemoveAll(emulator64Pth))
-		pth, err := emulatorBinPth(tmpDir, true)
-		require.NoError(t, err)
-		require.Equal(t, true, strings.Contains(pth, filepath.Join("tools", "emulator")), pth)
-	}
-
 	t.Log("fail if no emulator bin found")
 	{
 		require.NoError(t, os.RemoveAll(emulatorPth))
@@ -85,39 +49,44 @@ func TestLegacyEmulatorBinPth(t *testing.T) {
 	}
 }
 
-func TestLib64QTLibEnv(t *testing.T) {
+func TestLib64Env(t *testing.T) {
 	tmpDir, err := pathutil.NormalizedOSTempDirPath("")
 	require.NoError(t, err)
 
-	lib64QTDir := filepath.Join(tmpDir, "emulator", "lib64", "qt", "lib")
-	require.NoError(t, os.MkdirAll(lib64QTDir, 0700))
+	lib64Dir := filepath.Join(tmpDir, "emulator", "lib64")
+	require.NoError(t, os.MkdirAll(lib64Dir, 0700))
+	
+	lib64QTLibDir := filepath.Join(tmpDir, "emulator", "lib64", "qt", "lib")
+	require.NoError(t, os.MkdirAll(lib64QTLibDir, 0700))
 
-	t.Log("lib qt env on linux")
+	t.Log("lib env on linux")
 	{
-		env, err := lib64QTLibEnv(tmpDir, "linux", false)
+		env, err := lib64Env(tmpDir, "linux", false)
 		require.NoError(t, err)
 		require.Equal(t, true, strings.HasPrefix(env, "LD_LIBRARY_PATH="), env)
+		require.Equal(t, true, strings.Contains(env, "emulator/lib64:"), env)
 		require.Equal(t, true, strings.HasSuffix(env, "emulator/lib64/qt/lib"), env)
 	}
 
-	t.Log("lib qt env on osx")
+	t.Log("lib env on osx")
 	{
-		env, err := lib64QTLibEnv(tmpDir, "darwin", false)
+		env, err := lib64Env(tmpDir, "darwin", false)
 		require.NoError(t, err)
 		require.Equal(t, true, strings.HasPrefix(env, "DYLD_LIBRARY_PATH="), env)
+		require.Equal(t, true, strings.Contains(env, "emulator/lib64:"), env)
 		require.Equal(t, true, strings.HasSuffix(env, "emulator/lib64/qt/lib"), env)
 	}
 
 	t.Log("lib qt missing")
 	{
-		require.NoError(t, os.RemoveAll(lib64QTDir))
+		require.NoError(t, os.RemoveAll(lib64QTLibDir))
 
-		env, err := lib64QTLibEnv(tmpDir, "linux", false)
+		env, err := lib64Env(tmpDir, "linux", false)
 		require.Error(t, err)
 		require.Equal(t, true, strings.HasPrefix(err.Error(), "qt lib does not exist at:"))
 		require.Equal(t, "", env)
 
-		env, err = lib64QTLibEnv(tmpDir, "darwin", false)
+		env, err = lib64Env(tmpDir, "darwin", false)
 		require.Error(t, err)
 		require.Equal(t, true, strings.HasPrefix(err.Error(), "qt lib does not exist at:"))
 		require.Equal(t, "", env)
@@ -125,54 +94,42 @@ func TestLib64QTLibEnv(t *testing.T) {
 
 	t.Log("unspported os")
 	{
-		env, err := lib64QTLibEnv(tmpDir, "windows", false)
+		env, err := lib64Env(tmpDir, "windows", false)
 		require.Error(t, err)
 		require.EqualError(t, err, "unsupported os windows")
 		require.Equal(t, "", env)
 	}
 }
 
-func TestLegacyLib64QTLibEnv(t *testing.T) {
+func TestLegacyLibEnv(t *testing.T) {
 	tmpDir, err := pathutil.NormalizedOSTempDirPath("")
 	require.NoError(t, err)
 
-	lib64QTDir := filepath.Join(tmpDir, "tools", "lib64", "qt", "lib")
-	require.NoError(t, os.MkdirAll(lib64QTDir, 0700))
+	lib64Dir := filepath.Join(tmpDir, "tools", "lib64")
+	require.NoError(t, os.MkdirAll(lib64Dir, 0700))
+	
+	lib64QTLibDir := filepath.Join(tmpDir, "tools", "lib64", "qt", "lib")
+	require.NoError(t, os.MkdirAll(lib64QTLibDir, 0700))
 
-	t.Log("lib qt env on linux")
+	t.Log("lib env on linux")
 	{
-		env, err := lib64QTLibEnv(tmpDir, "linux", true)
+		env, err := lib64Env(tmpDir, "linux", true)
 		require.NoError(t, err)
 		require.Equal(t, true, strings.HasPrefix(env, "LD_LIBRARY_PATH="), env)
-		require.Equal(t, true, strings.HasSuffix(env, "tools/lib64/qt/lib"), env)
+		require.Equal(t, true, strings.HasSuffix(env, "tools/lib64"), env)
 	}
 
-	t.Log("lib qt env on osx")
+	t.Log("lib env on osx")
 	{
-		env, err := lib64QTLibEnv(tmpDir, "darwin", true)
+		env, err := lib64Env(tmpDir, "darwin", true)
 		require.NoError(t, err)
 		require.Equal(t, true, strings.HasPrefix(env, "DYLD_LIBRARY_PATH="), env)
-		require.Equal(t, true, strings.HasSuffix(env, "tools/lib64/qt/lib"), env)
-	}
-
-	t.Log("lib qt missing")
-	{
-		require.NoError(t, os.RemoveAll(lib64QTDir))
-
-		env, err := lib64QTLibEnv(tmpDir, "linux", true)
-		require.Error(t, err)
-		require.Equal(t, true, strings.HasPrefix(err.Error(), "qt lib does not exist at:"))
-		require.Equal(t, "", env)
-
-		env, err = lib64QTLibEnv(tmpDir, "darwin", true)
-		require.Error(t, err)
-		require.Equal(t, true, strings.HasPrefix(err.Error(), "qt lib does not exist at:"))
-		require.Equal(t, "", env)
+		require.Equal(t, true, strings.HasSuffix(env, "tools/lib64"), env)
 	}
 
 	t.Log("unspported os")
 	{
-		env, err := lib64QTLibEnv(tmpDir, "windows", true)
+		env, err := lib64Env(tmpDir, "windows", true)
 		require.Error(t, err)
 		require.EqualError(t, err, "unsupported os windows")
 		require.Equal(t, "", env)

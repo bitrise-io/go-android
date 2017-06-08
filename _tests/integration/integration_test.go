@@ -33,6 +33,8 @@ type emulator struct {
 	platform string
 	tag      string
 	abi      string
+	runOptions []string
+	isSupportedByLegacyStack bool
 }
 
 func TestIsLegacyAVDManager(t *testing.T) {
@@ -41,18 +43,26 @@ func TestIsLegacyAVDManager(t *testing.T) {
 }
 
 func TestCreateAndStartEmulator(t *testing.T) {
+	isLegacyStack, _ := avdmanager.IsLegacyAVDManager(os.Getenv("ANDROID_HOME"))
+	
 	for _, emu := range getEmulatorConfigList() {
+		if isLegacyStack && !emu.isSupportedByLegacyStack {
+			continue
+		}
 		createEmulator(t, emu.platform, emu.tag, emu.abi)
-		startEmulator(t)
+		startEmulator(t, emu.runOptions)
 	}
 }
 
 func getEmulatorConfigList() []emulator {
+	googleApis25RanchuOptions := []string{"-kernel", os.Getenv("ANDROID_HOME") + "/system-images/android-25/google_apis/arm64-v8a/kernel-qemu"}
 	return []emulator{
-		emulator{platform: "android-24", tag: "google_apis", abi: "armeabi-v7a"},
-		emulator{platform: "android-25", tag: "android-wear", abi: "armeabi-v7a"},
-		emulator{platform: "android-23", tag: "android-tv", abi: "armeabi-v7a"},
-		emulator{platform: "android-19", tag: "default", abi: "armeabi-v7a"},
+		emulator{platform: "android-24", tag: "google_apis", abi: "armeabi-v7a", runOptions: []string{}, isSupportedByLegacyStack: true},
+		emulator{platform: "android-25", tag: "android-wear", abi: "armeabi-v7a", runOptions: []string{}, isSupportedByLegacyStack: true},
+		emulator{platform: "android-23", tag: "android-tv", abi: "armeabi-v7a", runOptions: []string{}, isSupportedByLegacyStack: true},
+		emulator{platform: "android-19", tag: "default", abi: "armeabi-v7a", runOptions:[]string{}, isSupportedByLegacyStack: true},
+		emulator{platform: "android-17", tag: "default", abi: "mips", runOptions: []string{}, isSupportedByLegacyStack: true},
+		emulator{platform: "android-25", tag: "google_apis", abi: "arm64-v8a", runOptions: googleApis25RanchuOptions, isSupportedByLegacyStack: false},
 	}
 }
 
@@ -125,14 +135,14 @@ func createEmulator(t *testing.T, platform string, tag string, abi string) {
 	require.NoError(t, err, out)
 }
 
-func startEmulator(t *testing.T) {
+func startEmulator(t *testing.T, runOptions []string) {
 	t.Logf("Start emulator")
 
 	avdImages, err := listAVDImages()
 	require.NoError(t, err)
 
 	if !sliceutil.IsStringInSlice(testEmulatorName, avdImages) {
-		require.FailNow(t, "No emulator found with name: "+testEmulatorName)
+		require.FailNow(t, "No emulator found with name: " + testEmulatorName)
 	}
 
 	androidSdk, err := sdk.New(os.Getenv("ANDROID_HOME"))
@@ -148,6 +158,7 @@ func startEmulator(t *testing.T) {
 	require.NoError(t, err)
 
 	options := []string{"-no-boot-anim", "-no-window"}
+        options = append(options, runOptions...)
 
 	startEmulatorCommand := emulator.StartEmulatorCommand(testEmulatorName, testEmulatorSkin, options...)
 	startEmulatorCmd := startEmulatorCommand.GetCmd()
