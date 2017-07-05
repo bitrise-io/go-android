@@ -22,6 +22,10 @@ type AndroidSdkInterface interface {
 
 // New ...
 func New(androidHome string) (*Model, error) {
+	if androidHome == "" {
+		return nil, errors.New("android home not specified")
+	}
+
 	evaluatedAndroidHome, err := filepath.EvalSymlinks(androidHome)
 	if err != nil {
 		return nil, err
