@@ -1,8 +1,11 @@
 package adbmanager
 
 import (
+	"bufio"
 	"fmt"
 	"path/filepath"
+	"regexp"
+	"strings"
 
 	"github.com/bitrise-io/go-utils/command"
 	"github.com/bitrise-io/go-utils/pathutil"
@@ -28,41 +31,60 @@ func New(sdk sdk.AndroidSdkInterface) (*Model, error) {
 	}, nil
 }
 
-// DevicesCmd ...
-func (model Model) DevicesCmd() *command.Model {
-	return command.New(model.binPth, "devices")
+// Cmd ...
+func (adb Model) Cmd(args ...string) *command.Model {
+	return command.New(adb.binPth, args...)
 }
 
 // IsDeviceBooted ...
-func (model Model) IsDeviceBooted(serial string) (bool, error) {
-	devBootCmd := command.New(model.binPth, "-s", serial, "shell", "getprop dev.bootcomplete")
-	devBootOut, err := devBootCmd.RunAndReturnTrimmedCombinedOutput()
+func (adb Model) IsDeviceBooted(serial string) (bool, error) {
+	getpropCmd := adb.Cmd("-s", serial, "shell", "getprop dev.bootcomplete '0' && getprop sys.boot_completed '0' && getprop init.svc.bootanim 'running'")
+	getpropOut, err := getpropCmd.RunAndReturnTrimmedCombinedOutput()
 	if err != nil {
 		return false, err
 	}
 
-	sysBootCmd := command.New(model.binPth, "-s", serial, "shell", "getprop sys.boot_completed")
-	sysBootOut, err := sysBootCmd.RunAndReturnTrimmedCombinedOutput()
-	if err != nil {
-		return false, err
-	}
-
-	bootAnimCmd := command.New(model.binPth, "-s", serial, "shell", "getprop init.svc.bootanim")
-	bootAnimOut, err := bootAnimCmd.RunAndReturnTrimmedCombinedOutput()
-	if err != nil {
-		return false, err
-	}
-
-	return (devBootOut == "1" && sysBootOut == "1" && bootAnimOut == "stopped"), nil
+	return getpropOut == "1\n1\nstopped", nil
 }
 
 // UnlockDevice ...
-func (model Model) UnlockDevice(serial string) error {
-	keyEvent82Cmd := command.New(model.binPth, "-s", serial, "shell", "input", "82", "&")
-	if err := keyEvent82Cmd.Run(); err != nil {
+func (adb Model) UnlockDevice(serial string) error {
+	if err := adb.Cmd("-s", serial, "shell", "input", "82", "&").Run(); err != nil {
 		return err
 	}
+	return adb.Cmd("-s", serial, "shell", "input", "1", "&").Run()
+}
 
-	keyEvent1Cmd := command.New(model.binPth, "-s", serial, "shell", "input", "1", "&")
-	return keyEvent1Cmd.Run()
+// GetDevices ...
+func (adb Model) GetDevices() (map[string]string, error) {
+	cmd := adb.Cmd("devices")
+	out, err := cmd.RunAndReturnTrimmedCombinedOutput()
+	if err != nil {
+		return map[string]string{}, fmt.Errorf("command failed, error: %s", err)
+	}
+
+	// List of devices attached
+	// emulator-5554	device
+	deviceListItemPattern := `^(?P<emulator>emulator-\d*)[\s+](?P<state>.*)`
+	deviceListItemRegexp := regexp.MustCompile(deviceListItemPattern)
+
+	deviceStateMap := map[string]string{}
+
+	scanner := bufio.NewScanner(strings.NewReader(out))
+	for scanner.Scan() {
+		line := scanner.Text()
+		matches := deviceListItemRegexp.FindStringSubmatch(line)
+		if len(matches) == 3 {
+			serial := matches[1]
+			state := matches[2]
+
+			deviceStateMap[serial] = state
+		}
+
+	}
+	if scanner.Err() != nil {
+		return map[string]string{}, fmt.Errorf("scanner failed, error: %s", err)
+	}
+
+	return deviceStateMap, nil
 }
