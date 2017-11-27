@@ -31,14 +31,14 @@ func New(sdk sdk.AndroidSdkInterface) (*Model, error) {
 	}, nil
 }
 
-// Cmd ...
-func (adb Model) Cmd(args ...string) *command.Model {
+// Command ...
+func (adb Model) Command(args ...string) *command.Model {
 	return command.New(adb.binPth, args...)
 }
 
 // IsDeviceBooted ...
 func (adb Model) IsDeviceBooted(serial string) (bool, error) {
-	getpropCmd := adb.Cmd("-s", serial, "shell", "getprop dev.bootcomplete '0' && getprop sys.boot_completed '0' && getprop init.svc.bootanim 'running'")
+	getpropCmd := adb.shellCommand(serial, "shell", "getprop dev.bootcomplete '0' && getprop sys.boot_completed '0' && getprop init.svc.bootanim 'running'")
 	getpropOut, err := getpropCmd.RunAndReturnTrimmedCombinedOutput()
 	if err != nil {
 		return false, err
@@ -49,15 +49,15 @@ func (adb Model) IsDeviceBooted(serial string) (bool, error) {
 
 // UnlockDevice ...
 func (adb Model) UnlockDevice(serial string) error {
-	if err := adb.Cmd("-s", serial, "shell", "input", "82", "&").Run(); err != nil {
+	if err := adb.shellCommand(serial, "shell", "input", "82", "&").Run(); err != nil {
 		return err
 	}
-	return adb.Cmd("-s", serial, "shell", "input", "1", "&").Run()
+	return adb.shellCommand(serial, "shell", "input", "1", "&").Run()
 }
 
 // GetDevices ...
 func (adb Model) GetDevices() (map[string]string, error) {
-	cmd := adb.Cmd("devices")
+	cmd := adb.Command("devices")
 	out, err := cmd.RunAndReturnTrimmedCombinedOutput()
 	if err != nil {
 		return map[string]string{}, fmt.Errorf("command failed, error: %s", err)
@@ -87,4 +87,8 @@ func (adb Model) GetDevices() (map[string]string, error) {
 	}
 
 	return deviceStateMap, nil
+}
+
+func (adb Model) shellCommand(serial string, args ...string) *command.Model {
+	return command.New(adb.binPth, append([]string{"-s", serial}, args...)...)
 }
