@@ -156,7 +156,7 @@ func startEmulator(t *testing.T, runOptions []string) {
 	emulator, err := emulatormanager.New(androidSdk)
 	require.NoError(t, err)
 
-	options := []string{"-no-boot-anim", "-no-window"}
+	options := []string{"-no-boot-anim", "-no-window", "-gpu", "off"}
 	options = append(options, runOptions...)
 
 	startEmulatorCommand := emulator.StartEmulatorCommand(testEmulatorName, testEmulatorSkin, options...)
