@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -30,10 +29,10 @@ const (
 )
 
 type emulator struct {
-	platform string
-	tag      string
-	abi      string
-	runOptions []string
+	platform                 string
+	tag                      string
+	abi                      string
+	runOptions               []string
 	isSupportedByLegacyStack bool
 }
 
@@ -44,7 +43,7 @@ func TestIsLegacyAVDManager(t *testing.T) {
 
 func TestCreateAndStartEmulator(t *testing.T) {
 	isLegacyStack, _ := avdmanager.IsLegacyAVDManager(os.Getenv("ANDROID_HOME"))
-	
+
 	for _, emu := range getEmulatorConfigList() {
 		if isLegacyStack && !emu.isSupportedByLegacyStack {
 			continue
@@ -60,7 +59,7 @@ func getEmulatorConfigList() []emulator {
 		emulator{platform: "android-24", tag: "google_apis", abi: "armeabi-v7a", runOptions: []string{}, isSupportedByLegacyStack: true},
 		emulator{platform: "android-25", tag: "android-wear", abi: "armeabi-v7a", runOptions: []string{}, isSupportedByLegacyStack: true},
 		emulator{platform: "android-23", tag: "android-tv", abi: "armeabi-v7a", runOptions: []string{}, isSupportedByLegacyStack: true},
-		emulator{platform: "android-19", tag: "default", abi: "armeabi-v7a", runOptions:[]string{}, isSupportedByLegacyStack: true},
+		emulator{platform: "android-19", tag: "default", abi: "armeabi-v7a", runOptions: []string{}, isSupportedByLegacyStack: true},
 		emulator{platform: "android-17", tag: "default", abi: "mips", runOptions: []string{}, isSupportedByLegacyStack: true},
 		emulator{platform: "android-25", tag: "google_apis", abi: "arm64-v8a", runOptions: googleApis25RanchuOptions, isSupportedByLegacyStack: false},
 	}
@@ -142,7 +141,7 @@ func startEmulator(t *testing.T, runOptions []string) {
 	require.NoError(t, err)
 
 	if !sliceutil.IsStringInSlice(testEmulatorName, avdImages) {
-		require.FailNow(t, "No emulator found with name: " + testEmulatorName)
+		require.FailNow(t, "No emulator found with name: "+testEmulatorName)
 	}
 
 	androidSdk, err := sdk.New(os.Getenv("ANDROID_HOME"))
@@ -151,14 +150,14 @@ func startEmulator(t *testing.T, runOptions []string) {
 	adb, err := adbmanager.New(androidSdk)
 	require.NoError(t, err)
 
-	deviceStateMap, err := runningDeviceInfos(*adb)
+	deviceStateMap, err := adb.GetDevices()
 	require.NoError(t, err)
 
 	emulator, err := emulatormanager.New(androidSdk)
 	require.NoError(t, err)
 
-	options := []string{"-no-boot-anim", "-no-window"}
-        options = append(options, runOptions...)
+	options := []string{"-no-boot-anim", "-no-window", "-gpu", "off", "-no-audio"}
+	options = append(options, runOptions...)
 
 	startEmulatorCommand := emulator.StartEmulatorCommand(testEmulatorName, testEmulatorSkin, options...)
 	startEmulatorCmd := startEmulatorCommand.GetCmd()
@@ -207,7 +206,7 @@ func startEmulator(t *testing.T, runOptions []string) {
 		for len(serial) == 0 {
 			time.Sleep(5 * time.Second)
 
-			currentDeviceStateMap, err := runningDeviceInfos(*adb)
+			currentDeviceStateMap, err := adb.GetDevices()
 			if err != nil {
 				e <- err
 				return
@@ -304,35 +303,4 @@ func currentlyStartedDeviceSerial(alreadyRunningDeviceInfos, currentlyRunningDev
 	}
 
 	return ""
-}
-
-func runningDeviceInfos(adb adbmanager.Model) (map[string]string, error) {
-	cmd := adb.DevicesCmd()
-	out, err := cmd.RunAndReturnTrimmedCombinedOutput()
-	if err != nil {
-		return map[string]string{}, fmt.Errorf("command failed, error: %s", err)
-	}
-
-	deviceListItemPattern := `^(?P<emulator>emulator-\d*)[\s+](?P<state>.*)`
-	deviceListItemRegexp := regexp.MustCompile(deviceListItemPattern)
-
-	deviceStateMap := map[string]string{}
-
-	scanner := bufio.NewScanner(strings.NewReader(out))
-	for scanner.Scan() {
-		line := scanner.Text()
-		matches := deviceListItemRegexp.FindStringSubmatch(line)
-		if len(matches) == 3 {
-			serial := matches[1]
-			state := matches[2]
-
-			deviceStateMap[serial] = state
-		}
-
-	}
-	if scanner.Err() != nil {
-		return map[string]string{}, fmt.Errorf("scanner failed, error: %s", err)
-	}
-
-	return deviceStateMap, nil
 }
