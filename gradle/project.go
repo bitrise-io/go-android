@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bitrise-io/depman/pathutil"
 	"github.com/bitrise-io/go-utils/log"
+	"github.com/bitrise-io/go-utils/pathutil"
 	glob "github.com/ryanuber/go-glob"
 )
 
