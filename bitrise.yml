@@ -7,6 +7,10 @@ workflows:
     - _install_test_tools
     - test
     - integration-test
+  ci-no-integration:
+    before_run:
+    - _install_test_tools
+    - test
     
   test:
     steps:
