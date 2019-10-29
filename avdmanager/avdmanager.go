@@ -8,9 +8,9 @@ import (
 	"github.com/bitrise-io/go-utils/command"
 	"github.com/bitrise-io/go-utils/log"
 	"github.com/bitrise-io/go-utils/pathutil"
-	"github.com/bitrise-tools/go-android/sdk"
-	"github.com/bitrise-tools/go-android/sdkcomponent"
-	"github.com/bitrise-tools/go-android/sdkmanager"
+	"github.com/bitrise-io/go-android/sdk"
+	"github.com/bitrise-io/go-android/sdkcomponent"
+	"github.com/bitrise-io/go-android/sdkmanager"
 )
 
 // Model ...
