@@ -27,6 +27,18 @@ const (
 	LevelAll
 )
 
+// ParseLevel ...
+func ParseLevel(s string) Level {
+	switch s {
+	case "all":
+		return LevelAll
+	case "only_deps":
+		return LevelDeps
+	default:
+		return LevelNone
+	}
+}
+
 // Collect walks the directory tree underneath projectRoot and registers matching
 // paths for caching based on the value of cacheLevel. Returns an error if there
 // was an underlying error that would lead to a corrupted cache file, otherwise
