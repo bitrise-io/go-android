@@ -60,6 +60,7 @@ func Collect(projectRoot string, cacheLevel Level) error {
 
 	excludePths := []string{
 		"~/.gradle/**",
+		"!~/.gradle/daemon/*/daemon-*.out.log", // excludes Gradle daemon logs, like: ~/.gradle/daemon/6.1.1/daemon-3122.out.log
 		"~/.android/build-cache/**",
 		"*.lock",
 		"*.bin",
