@@ -30,7 +30,7 @@ OS:           Mac OS X 10.15.5 x86_64`,
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseGradlewVersion(tt.out)
+			got, err := parseGradleVersion(tt.out)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("parseGradlewVersion() error = %v, wantErr %v", err, tt.wantErr)
 				return
