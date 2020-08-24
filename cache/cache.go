@@ -66,13 +66,12 @@ func Collect(projectRoot string, cacheLevel Level) error {
 
 	ver, err := projectGradleVersion(projectRoot)
 	if err != nil {
-		log.Warnf("failed to get project gradle version: %s", err)
+		log.Warnf("Failed to get project gradle version: %s", err)
 	} else {
 		excludes, err := oldGradleExcludePaths(homeDir, ver)
 		if err != nil {
-			log.Warnf("failed to collect old gradle exclude paths: %s", err)
+			log.Warnf("Failed to collect old gradle exclude paths: %s", err)
 		} else {
-			fmt.Printf("old gradle exclude path:\n%s\n", strings.Join(excludes, "\n"))
 			excludePths = append(excludePths, excludes...)
 		}
 	}
@@ -83,17 +82,17 @@ func Collect(projectRoot string, cacheLevel Level) error {
 	if err := filepath.Walk(projectRoot, func(path string, f os.FileInfo, err error) error {
 		if !f.IsDir() && strings.HasSuffix(f.Name(), ".gradle") && !strings.Contains(path, "node_modules") {
 			if md5Hash, err := computeMD5String(path); err != nil {
-				log.Warnf("Failed to compute MD5 hash of file(%s), error: %s", path, err)
+				log.Warnf("Failed to compute MD5 hash of %s: %s", path, err)
 			} else {
 				lockfileContent += md5Hash
 			}
 		}
 		return nil
 	}); err != nil {
-		return fmt.Errorf("dependency map generation skipped: failed to collect dependencies")
+		return fmt.Errorf("failed to create cache indicator file: %s", err)
 	}
 	if err := fileutil.WriteStringToFile(lockFilePath, lockfileContent); err != nil {
-		return fmt.Errorf("dependency map generation skipped: failed to write lockfile, error: %s", err)
+		return fmt.Errorf("failed to write indicator file: %s", err)
 	}
 
 	includePths = append(includePths, fmt.Sprintf("%s -> %s", filepath.Join(homeDir, ".gradle"), lockFilePath))
@@ -114,7 +113,7 @@ func Collect(projectRoot string, cacheLevel Level) error {
 			}
 			return nil
 		}); err != nil {
-			return fmt.Errorf("cache collection skipped: failed to determine cache paths")
+			return fmt.Errorf("failed to collect build cache: %s", err)
 		}
 	}
 
@@ -122,7 +121,7 @@ func Collect(projectRoot string, cacheLevel Level) error {
 	gradleCache.ExcludePath(strings.Join(excludePths, "\n"))
 
 	if err := gradleCache.Commit(); err != nil {
-		return fmt.Errorf("cache collection skipped: failed to commit cache paths")
+		return fmt.Errorf("failed to commit cache paths: %s", err)
 	}
 
 	return nil
@@ -135,7 +134,7 @@ func computeMD5String(filePath string) (string, error) {
 	}
 	defer func() {
 		if err := f.Close(); err != nil {
-			log.Errorf("Failed to close file(%s), error: %s", filePath, err)
+			log.Errorf("Failed to close %s: %s", filePath, err)
 		}
 	}()
 
