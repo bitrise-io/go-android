@@ -29,7 +29,7 @@ func parseGradleVersion(out string) (string, error) {
 	   OS:           Mac OS X 10.15.5 x86_64
 	*/
 
-	pattern := `Gradle (.*)`
+	pattern := `-+\sGradle (.*)\s-+`
 	exp := regexp.MustCompile(pattern)
 	matches := exp.FindStringSubmatch(out)
 	if len(matches) < 2 {
