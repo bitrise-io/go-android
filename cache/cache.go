@@ -80,13 +80,26 @@ func Collect(projectRoot string, cacheLevel Level) error {
 
 	lockfileContent := ""
 	if err := filepath.Walk(projectRoot, func(path string, f os.FileInfo, err error) error {
-		if !f.IsDir() && strings.HasSuffix(f.Name(), ".gradle") && !strings.Contains(path, "node_modules") {
-			if md5Hash, err := computeMD5String(path); err != nil {
-				log.Warnf("Failed to compute MD5 hash of %s: %s", path, err)
-			} else {
-				lockfileContent += md5Hash
-			}
+		if err != nil {
+			return fmt.Errorf("failed to walk %s: %s", path, err)
 		}
+
+		if f.IsDir() || strings.Contains(path, "node_modules") {
+			return nil
+		}
+
+		if !strings.HasSuffix(f.Name(), ".gradle") && !strings.HasSuffix(f.Name(), ".gradle.kts") {
+			return nil
+		}
+
+		md5Hash, err := computeMD5String(path)
+		if err != nil {
+			log.Warnf("Failed to compute MD5 hash of %s: %s", path, err)
+			return nil
+		}
+
+		lockfileContent += md5Hash
+
 		return nil
 	}); err != nil {
 		return fmt.Errorf("failed to create cache indicator file: %s", err)
@@ -103,10 +116,15 @@ func Collect(projectRoot string, cacheLevel Level) error {
 		includePths = append(includePths, fmt.Sprintf("%s -> %s", filepath.Join(homeDir, ".android", "build-cache"), lockFilePath))
 
 		if err := filepath.Walk(projectRoot, func(path string, f os.FileInfo, err error) error {
+			if err != nil {
+				return fmt.Errorf("failed to walk %s: %s", path, err)
+			}
+
 			if f.IsDir() {
 				if f.Name() == "build" {
 					includePths = append(includePths, path)
 				}
+
 				if f.Name() == ".gradle" {
 					includePths = append(includePths, path)
 				}
