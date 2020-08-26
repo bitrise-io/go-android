@@ -38,25 +38,6 @@ func Collect(projectRoot string, cacheLevel Level) error {
 
 	gradleCache := cache.New()
 
-	var includePths []string
-	excludePths := []string{
-		"~/.gradle/**",
-		"!~/.gradle/daemon/*/daemon-*.out.log", // excludes Gradle daemon logs, like: ~/.gradle/daemon/6.1.1/daemon-3122.out.log
-		"~/.android/build-cache/**",
-		"*.lock",
-		"*.bin",
-		"*/build/*.json",
-		"*/build/*.html",
-		"*/build/*.xml",
-		"*/build/*.properties",
-		"*/build/*/zip-cache/*",
-		"*.log",
-		"*.txt",
-		"*.rawproto",
-		"!*.ap_",
-		"!*.apk",
-	}
-
 	homeDir := pathutil.UserHomeDir()
 
 	projectRoot, err := filepath.Abs(projectRoot)
@@ -64,22 +45,30 @@ func Collect(projectRoot string, cacheLevel Level) error {
 		return fmt.Errorf("cache collection skipped: failed to determine project root path")
 	}
 
-	ver, err := projectGradleVersion(projectRoot)
+	includePths, err := collectIncludePaths(homeDir, projectRoot, cacheLevel)
 	if err != nil {
-		log.Warnf("Failed to get project gradle version: %s", err)
-	} else {
-		excludes, err := oldGradleExcludePaths(homeDir, ver)
-		if err != nil {
-			log.Warnf("Failed to collect old gradle exclude paths: %s", err)
-		} else {
-			excludePths = append(excludePths, excludes...)
-		}
+		return err
 	}
 
-	lockFilePath := filepath.Join(projectRoot, "gradle.deps")
+	excludePths := collectExcludePaths(homeDir, projectRoot)
+
+	gradleCache.IncludePath(strings.Join(includePths, "\n"))
+	gradleCache.ExcludePath(strings.Join(excludePths, "\n"))
+
+	if err := gradleCache.Commit(); err != nil {
+		return fmt.Errorf("failed to commit cache paths: %s", err)
+	}
+
+	return nil
+}
+
+func collectIncludePaths(homeDir, projectDir string, cacheLevel Level) ([]string, error) {
+	var includePths []string
+
+	lockFilePath := filepath.Join(projectDir, "gradle.deps")
 
 	lockfileContent := ""
-	if err := filepath.Walk(projectRoot, func(path string, f os.FileInfo, err error) error {
+	if err := filepath.Walk(projectDir, func(path string, f os.FileInfo, err error) error {
 		if err != nil {
 			return fmt.Errorf("failed to walk %s: %s", path, err)
 		}
@@ -102,10 +91,10 @@ func Collect(projectRoot string, cacheLevel Level) error {
 
 		return nil
 	}); err != nil {
-		return fmt.Errorf("failed to create cache indicator file: %s", err)
+		return nil, fmt.Errorf("failed to create cache indicator file: %s", err)
 	}
 	if err := fileutil.WriteStringToFile(lockFilePath, lockfileContent); err != nil {
-		return fmt.Errorf("failed to write indicator file: %s", err)
+		return nil, fmt.Errorf("failed to write indicator file: %s", err)
 	}
 
 	includePths = append(includePths, fmt.Sprintf("%s -> %s", filepath.Join(homeDir, ".gradle"), lockFilePath))
@@ -115,7 +104,7 @@ func Collect(projectRoot string, cacheLevel Level) error {
 	if cacheLevel == LevelAll {
 		includePths = append(includePths, fmt.Sprintf("%s -> %s", filepath.Join(homeDir, ".android", "build-cache"), lockFilePath))
 
-		if err := filepath.Walk(projectRoot, func(path string, f os.FileInfo, err error) error {
+		if err := filepath.Walk(projectDir, func(path string, f os.FileInfo, err error) error {
 			if err != nil {
 				return fmt.Errorf("failed to walk %s: %s", path, err)
 			}
@@ -131,18 +120,11 @@ func Collect(projectRoot string, cacheLevel Level) error {
 			}
 			return nil
 		}); err != nil {
-			return fmt.Errorf("failed to collect build cache: %s", err)
+			return nil, fmt.Errorf("failed to collect build cache: %s", err)
 		}
 	}
 
-	gradleCache.IncludePath(strings.Join(includePths, "\n"))
-	gradleCache.ExcludePath(strings.Join(excludePths, "\n"))
-
-	if err := gradleCache.Commit(); err != nil {
-		return fmt.Errorf("failed to commit cache paths: %s", err)
-	}
-
-	return nil
+	return includePths, nil
 }
 
 func computeMD5String(filePath string) (string, error) {
@@ -162,4 +144,51 @@ func computeMD5String(filePath string) (string, error) {
 	}
 
 	return fmt.Sprintf("%x", h.Sum(nil)), nil
+}
+
+func collectExcludePaths(homeDir, projectDir string) []string {
+	excludePths := []string{
+		"~/.gradle/**",
+		"!~/.gradle/daemon/*/daemon-*.out.log", // excludes Gradle daemon logs, like: ~/.gradle/daemon/6.1.1/daemon-3122.out.log
+		"~/.android/build-cache/**",
+		"*.lock",
+		"*.bin",
+		"*/build/*.json",
+		"*/build/*.html",
+		"*/build/*.xml",
+		"*/build/*.properties",
+		"*/build/*/zip-cache/*",
+		"*.log",
+		"*.txt",
+		"*.rawproto",
+		"!*.ap_",
+		"!*.apk",
+	}
+
+	ver, err := projectGradleVersion(projectDir)
+	if err != nil {
+		log.Warnf("Failed to get project gradle version: %s", err)
+		return nil
+	}
+
+	gradleUserHome := filepath.Join(homeDir, ".gradle")
+	exist, err := pathutil.IsPathExists(gradleUserHome)
+	if err != nil {
+		log.Warnf("Failed to check if gradle user home dir (%s) exists: %s", gradleUserHome, err)
+		return nil
+	}
+	if !exist {
+		log.Warnf("Gradle user home dir (%s) does not exist", gradleUserHome)
+		return nil
+	}
+
+	excludes, err := gradleUserHomeExcludePaths(gradleUserHome, ver)
+	if err != nil {
+		log.Warnf("Failed to collect old gradle exclude paths: %s", err)
+		return nil
+	}
+
+	excludePths = append(excludePths, excludes...)
+
+	return excludePths
 }
