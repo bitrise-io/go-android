@@ -61,21 +61,12 @@ func projectGradleVersion(projectPth string) (string, error) {
 	return parseGradleVersion(out)
 }
 
-func oldGradleExcludePaths(homeDir, currentGradleVersion string) ([]string, error) {
+func gradleUserHomeExcludePaths(gradleUserHome, currentGradleVersion string) ([]string, error) {
 	var excludes []string
-
-	gradlewDir := filepath.Join(homeDir, ".gradle")
-	exist, err := pathutil.IsPathExists(gradlewDir)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check if %s exist: %s", gradlewDir, err)
-	}
-	if !exist {
-		return nil, nil
-	}
 
 	{
 		// exclude old wrappers, like ~/.gradle/wrapper/dists/gradle-5.1.1-all
-		wrapperDistrDir := filepath.Join(gradlewDir, "wrapper", "dists")
+		wrapperDistrDir := filepath.Join(gradleUserHome, "wrapper", "dists")
 		entries, err := ioutil.ReadDir(wrapperDistrDir)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read entries of %s: %s", wrapperDistrDir, err)
@@ -89,7 +80,7 @@ func oldGradleExcludePaths(homeDir, currentGradleVersion string) ([]string, erro
 
 	{
 		// exclude old caches, like ~/.gradle/caches/5.1.1
-		cachesDir := filepath.Join(gradlewDir, "caches")
+		cachesDir := filepath.Join(gradleUserHome, "caches")
 		entries, err := ioutil.ReadDir(cachesDir)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read entries of %s: %s", cachesDir, err)
@@ -108,7 +99,7 @@ func oldGradleExcludePaths(homeDir, currentGradleVersion string) ([]string, erro
 
 	{
 		// exclude old daemon, like ~/.gradle/daemon/5.1.1
-		daemonDir := filepath.Join(gradlewDir, "daemon")
+		daemonDir := filepath.Join(gradleUserHome, "daemon")
 		entries, err := ioutil.ReadDir(daemonDir)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read entries of %s: %s", daemonDir, err)
@@ -122,6 +113,28 @@ func oldGradleExcludePaths(homeDir, currentGradleVersion string) ([]string, erro
 			if e.Name() != currentGradleVersion {
 				excludes = append(excludes, "!"+filepath.Join(daemonDir, e.Name()))
 			}
+		}
+	}
+
+	return excludes, nil
+}
+
+func projectGradleExcludePaths(projectDir, currentGradleVersion string) ([]string, error) {
+	var excludes []string
+
+	gradleDir := filepath.Join(projectDir, ".gradle")
+	entries, err := ioutil.ReadDir(gradleDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read entries of %s: %s", gradleDir, err)
+	}
+	for _, e := range entries {
+		v, err := version.NewVersion(e.Name())
+		if err != nil || v == nil {
+			continue
+		}
+
+		if e.Name() != currentGradleVersion {
+			excludes = append(excludes, "!"+filepath.Join(gradleDir, e.Name()))
 		}
 	}
 

@@ -171,24 +171,37 @@ func collectExcludePaths(homeDir, projectDir string) []string {
 		return nil
 	}
 
-	gradleUserHome := filepath.Join(homeDir, ".gradle")
-	exist, err := pathutil.IsPathExists(gradleUserHome)
-	if err != nil {
-		log.Warnf("Failed to check if gradle user home dir (%s) exists: %s", gradleUserHome, err)
-		return nil
-	}
-	if !exist {
-		log.Warnf("Gradle user home dir (%s) does not exist", gradleUserHome)
-		return nil
+	{
+		gradleUserHome := filepath.Join(homeDir, ".gradle")
+		exist, err := pathutil.IsPathExists(gradleUserHome)
+		if err != nil {
+			log.Warnf("Failed to check if gradle user home dir (%s) exists: %s", gradleUserHome, err)
+			return nil
+		}
+		if !exist {
+			log.Warnf("Gradle user home dir (%s) does not exist", gradleUserHome)
+			return nil
+		}
+
+		excludes, err := gradleUserHomeExcludePaths(gradleUserHome, ver)
+		if err != nil {
+			log.Warnf("Failed to collect gradle user home exclude paths: %s", err)
+			return nil
+		}
+
+		excludePths = append(excludePths, excludes...)
 	}
 
-	excludes, err := gradleUserHomeExcludePaths(gradleUserHome, ver)
-	if err != nil {
-		log.Warnf("Failed to collect old gradle exclude paths: %s", err)
-		return nil
-	}
+	{
+		excludes, err := projectGradleExcludePaths(projectDir, ver)
+		if err != nil {
+			log.Warnf("Failed to collect project gradle exclude paths: %s", err)
+			return nil
+		}
 
-	excludePths = append(excludePths, excludes...)
+		excludePths = append(excludePths, excludes...)
+
+	}
 
 	return excludePths
 }
