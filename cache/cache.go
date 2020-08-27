@@ -77,7 +77,7 @@ func collectIncludePaths(homeDir, projectDir string, cacheLevel Level) ([]string
 			return nil
 		}
 
-		if !strings.HasSuffix(f.Name(), ".gradle") && !strings.HasSuffix(f.Name(), ".gradle.kts") {
+		if !strings.HasSuffix(f.Name(), ".gradle") && !strings.HasSuffix(f.Name(), ".gradle.kts") && f.Name() != "gradlew-wrapper.properties" {
 			return nil
 		}
 
