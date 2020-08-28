@@ -77,7 +77,7 @@ func collectIncludePaths(homeDir, projectDir string, cacheLevel Level) ([]string
 			return nil
 		}
 
-		if !strings.HasSuffix(f.Name(), ".gradle") && !strings.HasSuffix(f.Name(), ".gradle.kts") {
+		if !strings.HasSuffix(f.Name(), ".gradle") && !strings.HasSuffix(f.Name(), ".gradle.kts") && f.Name() != "gradlew-wrapper.properties" {
 			return nil
 		}
 
@@ -148,7 +148,6 @@ func computeMD5String(filePath string) (string, error) {
 
 func collectExcludePaths(homeDir, projectDir string) []string {
 	excludePths := []string{
-		"~/.gradle/**",
 		"!~/.gradle/daemon/*/daemon-*.out.log", // excludes Gradle daemon logs, like: ~/.gradle/daemon/6.1.1/daemon-3122.out.log
 		"~/.android/build-cache/**",
 		"*.lock",
