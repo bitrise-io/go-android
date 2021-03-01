@@ -31,6 +31,17 @@ func TestLatestBuildToolsDir(t *testing.T) {
 	require.Equal(t, true, strings.Contains(latestBuildToolsDir, filepath.Join("build-tools", "25.0.3")), latestBuildToolsDir)
 }
 
+func TestNoBuildToolsDir(t *testing.T) {
+	tmpDir, err := pathutil.NormalizedOSTempDirPath("")
+	require.NoError(t, err)
+
+	sdk, err := New(tmpDir)
+	require.NoError(t, err)
+
+	_, err = sdk.LatestBuildToolsDir()
+	require.EqualError(t, err, "failed to find latest build-tools dir")
+}
+
 func TestLatestBuildToolPath(t *testing.T) {
 	tmpDir, err := pathutil.NormalizedOSTempDirPath("")
 	require.NoError(t, err)
