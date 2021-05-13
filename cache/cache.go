@@ -23,7 +23,7 @@ func NewAndroidGradleCacheItemCollector() cache.ItemCollector {
 	return AndroidGradleCacheItemCollector{}
 }
 
-// CollectCacheItems ...
+// Collect ...
 func (c AndroidGradleCacheItemCollector) Collect(dir string, cacheLevel cache.Level) ([]string, []string, error) {
 	if cacheLevel == cache.LevelNone {
 		return nil, nil, nil
