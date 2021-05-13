@@ -27,34 +27,58 @@ const (
 	LevelAll  = Level("all")
 )
 
+// CacheItemCollector ...
+type CacheItemCollector interface {
+	CollectCacheItems(dir string, cacheLevel Level) ([]string, []string, error)
+}
+
+type AndroidGradleCacheItemCollector struct {
+}
+
+func NewAndroidGradleCacheItemCollector() CacheItemCollector {
+	return AndroidGradleCacheItemCollector{}
+}
+
+func (c AndroidGradleCacheItemCollector) CollectCacheItems(dir string, cacheLevel Level) ([]string, []string, error) {
+	if cacheLevel == LevelNone {
+		return nil, nil, nil
+	}
+
+	homeDir := pathutil.UserHomeDir()
+
+	projectRoot, err := filepath.Abs(dir)
+	if err != nil {
+		return nil, nil, fmt.Errorf("cache collection skipped: failed to determine project root path")
+	}
+
+	includePths, err := collectIncludePaths(homeDir, projectRoot, cacheLevel)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	excludePths := collectExcludePaths(homeDir, projectRoot)
+
+	return includePths, excludePths, nil
+}
+
 // Collect walks the directory tree underneath projectRoot and registers matching
 // paths for caching based on the value of cacheLevel. Returns an error if there
 // was an underlying error that would lead to a corrupted cache file, otherwise
 // the given path is skipped.
 func Collect(projectRoot string, cacheLevel Level) error {
-	if cacheLevel == LevelNone {
-		return nil
-	}
-
-	gradleCache := cache.New()
-
-	homeDir := pathutil.UserHomeDir()
-
-	projectRoot, err := filepath.Abs(projectRoot)
-	if err != nil {
-		return fmt.Errorf("cache collection skipped: failed to determine project root path")
-	}
-
-	includePths, err := collectIncludePaths(homeDir, projectRoot, cacheLevel)
+	cacheItemCollector := NewAndroidGradleCacheItemCollector()
+	includes, excludes, err := cacheItemCollector.CollectCacheItems(projectRoot, cacheLevel)
 	if err != nil {
 		return err
 	}
 
-	excludePths := collectExcludePaths(homeDir, projectRoot)
+	if len(includes) == 0 && len(excludes) == 0 {
+		return nil
+	}
 
-	gradleCache.IncludePath(strings.Join(includePths, "\n"))
-	gradleCache.ExcludePath(strings.Join(excludePths, "\n"))
-
+	gradleCache := cache.New()
+	gradleCache.IncludePath(strings.Join(includes, "\n"))
+	gradleCache.ExcludePath(strings.Join(excludes, "\n"))
 	if err := gradleCache.Commit(); err != nil {
 		return fmt.Errorf("failed to commit cache paths: %s", err)
 	}
