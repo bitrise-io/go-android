@@ -14,36 +14,18 @@ import (
 	"github.com/bitrise-io/go-utils/pathutil"
 )
 
-// Level defines the extent to which caching should be used.
-// - LevelNone: no caching
-// - LevelDeps: only dependencies will be cached
-// - LevelAll: caching will include gradle and android build cache
-type Level string
-
-// Cache level
-const (
-	LevelNone = Level("none")
-	LevelDeps = Level("only_deps")
-	LevelAll  = Level("all")
-)
-
-// ItemCollector ...
-type ItemCollector interface {
-	CollectCacheItems(dir string, cacheLevel Level) ([]string, []string, error)
-}
-
 // AndroidGradleCacheItemCollector ...
 type AndroidGradleCacheItemCollector struct {
 }
 
 // NewAndroidGradleCacheItemCollector ...
-func NewAndroidGradleCacheItemCollector() ItemCollector {
+func NewAndroidGradleCacheItemCollector() cache.ItemCollector {
 	return AndroidGradleCacheItemCollector{}
 }
 
 // CollectCacheItems ...
-func (c AndroidGradleCacheItemCollector) CollectCacheItems(dir string, cacheLevel Level) ([]string, []string, error) {
-	if cacheLevel == LevelNone {
+func (c AndroidGradleCacheItemCollector) Collect(dir string, cacheLevel cache.Level) ([]string, []string, error) {
+	if cacheLevel == cache.LevelNone {
 		return nil, nil, nil
 	}
 
@@ -68,9 +50,9 @@ func (c AndroidGradleCacheItemCollector) CollectCacheItems(dir string, cacheLeve
 // paths for caching based on the value of cacheLevel. Returns an error if there
 // was an underlying error that would lead to a corrupted cache file, otherwise
 // the given path is skipped.
-func Collect(projectRoot string, cacheLevel Level) error {
+func Collect(projectRoot string, cacheLevel cache.Level) error {
 	cacheItemCollector := NewAndroidGradleCacheItemCollector()
-	includes, excludes, err := cacheItemCollector.CollectCacheItems(projectRoot, cacheLevel)
+	includes, excludes, err := cacheItemCollector.Collect(projectRoot, cacheLevel)
 	if err != nil {
 		return err
 	}
@@ -89,7 +71,7 @@ func Collect(projectRoot string, cacheLevel Level) error {
 	return nil
 }
 
-func collectIncludePaths(homeDir, projectDir string, cacheLevel Level) ([]string, error) {
+func collectIncludePaths(homeDir, projectDir string, cacheLevel cache.Level) ([]string, error) {
 	var includePths []string
 
 	lockFilePath := filepath.Join(projectDir, "gradle.deps")
@@ -128,7 +110,7 @@ func collectIncludePaths(homeDir, projectDir string, cacheLevel Level) ([]string
 	includePths = append(includePths, fmt.Sprintf("%s -> %s", filepath.Join(homeDir, ".kotlin"), lockFilePath))
 	includePths = append(includePths, fmt.Sprintf("%s -> %s", filepath.Join(homeDir, ".m2"), lockFilePath))
 
-	if cacheLevel == LevelAll {
+	if cacheLevel == cache.LevelAll {
 		includePths = append(includePths, fmt.Sprintf("%s -> %s", filepath.Join(homeDir, ".android", "build-cache"), lockFilePath))
 
 		if err := filepath.Walk(projectDir, func(path string, f os.FileInfo, err error) error {
