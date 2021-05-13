@@ -27,18 +27,21 @@ const (
 	LevelAll  = Level("all")
 )
 
-// CacheItemCollector ...
-type CacheItemCollector interface {
+// ItemCollector ...
+type ItemCollector interface {
 	CollectCacheItems(dir string, cacheLevel Level) ([]string, []string, error)
 }
 
+// AndroidGradleCacheItemCollector ...
 type AndroidGradleCacheItemCollector struct {
 }
 
-func NewAndroidGradleCacheItemCollector() CacheItemCollector {
+// NewAndroidGradleCacheItemCollector ...
+func NewAndroidGradleCacheItemCollector() ItemCollector {
 	return AndroidGradleCacheItemCollector{}
 }
 
+// CollectCacheItems ...
 func (c AndroidGradleCacheItemCollector) CollectCacheItems(dir string, cacheLevel Level) ([]string, []string, error) {
 	if cacheLevel == LevelNone {
 		return nil, nil, nil
