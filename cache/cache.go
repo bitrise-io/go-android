@@ -62,7 +62,7 @@ func Collect(projectRoot string, cacheLevel cache.Level) error {
 	}
 
 	gradleCache := cache.New()
-	gradleCache.IncludePath(strings.Join(includes, "\n"))
+	gradleCache.IncludePath(includes...)
 	gradleCache.ExcludePath(strings.Join(excludes, "\n"))
 	if err := gradleCache.Commit(); err != nil {
 		return fmt.Errorf("failed to commit cache paths: %s", err)
