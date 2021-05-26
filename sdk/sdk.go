@@ -3,6 +3,7 @@ package sdk
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -18,22 +19,65 @@ type Model struct {
 // AndroidSdkInterface ...
 type AndroidSdkInterface interface {
 	GetAndroidHome() string
+	CmdlineToolsPath() (string, error)
 }
 
 // New ...
 func New(androidHome string) (*Model, error) {
-	evaluatedAndroidHome, err := filepath.EvalSymlinks(androidHome)
+	evaluatedSDKRoot, err := validateAndroidSDKRoot(androidHome)
 	if err != nil {
 		return nil, err
 	}
 
-	if exist, err := pathutil.IsDirExists(evaluatedAndroidHome); err != nil {
-		return nil, err
-	} else if !exist {
-		return nil, fmt.Errorf("android home not exists at: %s", evaluatedAndroidHome)
+	return &Model{androidHome: evaluatedSDKRoot}, nil
+}
+
+// NewDefaultModel
+func NewDefaultModel() (*Model, error) {
+	// https://developer.android.com/studio/command-line/variables#envar
+	// Sets the path to the SDK installation directory.
+	// ANDROID_HOME, which also points to the SDK installation directory, is deprecated.
+	// If you continue to use it, the following rules apply:
+	//  If ANDROID_HOME is defined and contains a valid SDK installation, its value is used instead of the value in ANDROID_SDK_ROOT.
+	//  If ANDROID_HOME is not defined, the value in ANDROID_SDK_ROOT is used.
+	var warnings []string
+	for _, envKey := range []string{"ANDROID_HOME", "ANDROID_SDK_ROOT"} {
+		dir, isSet := os.LookupEnv(envKey)
+		if !isSet {
+			warnings = append(warnings, fmt.Sprintf("(%s) environment variable is unset", envKey))
+			continue
+		}
+
+		if dir == "" {
+			warnings = append(warnings, fmt.Sprintf("(%s) environment variable is set but empty", envKey))
+			continue
+		}
+
+		evaluatedSDKRoot, err := validateAndroidSDKRoot(dir)
+		if err != nil {
+			warnings = append(warnings, err.Error())
+			continue
+		}
+
+		return &Model{androidHome: evaluatedSDKRoot}, nil
 	}
 
-	return &Model{androidHome: evaluatedAndroidHome}, nil
+	return nil, fmt.Errorf("could not locate Android SDK root directory: %s", warnings)
+}
+
+func validateAndroidSDKRoot(SDKRoot string) (string, error) {
+	evaluatedSDKRoot, err := filepath.EvalSymlinks(SDKRoot)
+	if err != nil {
+		return "", err
+	}
+
+	if exist, err := pathutil.IsDirExists(evaluatedSDKRoot); err != nil {
+		return "", err
+	} else if !exist {
+		return "", fmt.Errorf("(%s) is not a valid Android SDK root", evaluatedSDKRoot)
+	}
+
+	return evaluatedSDKRoot, nil
 }
 
 // GetAndroidHome ...
@@ -86,4 +130,40 @@ func (model *Model) LatestBuildToolPath(name string) (string, error) {
 	}
 
 	return pth, nil
+}
+
+// CmdlineToolsPath locates the command-line tools directory
+func (model *Model) CmdlineToolsPath() (string, error) {
+	toolPaths := []string{
+		filepath.Join(model.GetAndroidHome(), "cmdline-tools", "latest", "bin"),
+		filepath.Join(model.GetAndroidHome(), "cmdline-tools", "*", "bin"),
+		filepath.Join(model.GetAndroidHome(), "tools", "bin"),
+		filepath.Join(model.GetAndroidHome(), "tools"), // legacy
+	}
+
+	for _, dirPattern := range toolPaths {
+		matches, err := filepath.Glob(dirPattern)
+		if err != nil {
+			return "", fmt.Errorf("failed to locate Android command-line tools directory, invalid patterns specified (%s): %s", toolPaths, err)
+		}
+
+		if len(matches) == 0 {
+			continue
+		}
+
+		sdkmanagerPath := matches[0]
+
+		fileInfo, err := os.Stat(sdkmanagerPath)
+		if err != nil {
+			return "", fmt.Errorf("failed to get file info for (%s): %v", sdkmanagerPath, err)
+		}
+
+		if !fileInfo.IsDir() {
+			return "", fmt.Errorf("(%s) is not a directory, as expected", sdkmanagerPath)
+		}
+
+		return sdkmanagerPath, nil
+	}
+
+	return "", fmt.Errorf("failed to locate Android command-line tools directory, searched paths: %s", toolPaths)
 }
