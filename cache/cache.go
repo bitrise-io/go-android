@@ -3,7 +3,6 @@ package cache
 import (
 	"crypto/md5"
 	"fmt"
-	"github.com/bitrise-io/go-utils/command"
 	"io"
 	"io/ioutil"
 	"os"
@@ -12,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/bitrise-io/go-steputils/cache"
+	"github.com/bitrise-io/go-utils/command"
 	"github.com/bitrise-io/go-utils/fileutil"
 	"github.com/bitrise-io/go-utils/log"
 	"github.com/bitrise-io/go-utils/pathutil"
