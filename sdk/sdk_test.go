@@ -161,7 +161,7 @@ func TestNewDefaultModel(t *testing.T) {
 				unsetEnvs = append(unsetEnvs, unsetEnv)
 			}
 
-			got, err := NewDefaultModel()
+			got, err := NewDefaultModel(*NewEnvironment())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewDefaultModel() error = %v, wantErr %v", err, tt.wantErr)
 				return

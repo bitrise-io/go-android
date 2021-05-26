@@ -16,6 +16,19 @@ type Model struct {
 	androidHome string
 }
 
+// Environment is used to pass in environemnt variables used to locate Android SDK
+type Environment struct {
+	AndroidHome    string // ANDROID_HOME
+	AndroidSDKRoot string // ANDROID_SDK_ROOT
+}
+
+func NewEnvironment() *Environment {
+	return &Environment{
+		AndroidHome:    os.Getenv("ANDROID_HOME"),
+		AndroidSDKRoot: os.Getenv("ANDROID_SDK_ROOT"),
+	}
+}
+
 // AndroidSdkInterface ...
 type AndroidSdkInterface interface {
 	GetAndroidHome() string
@@ -33,7 +46,7 @@ func New(androidHome string) (*Model, error) {
 }
 
 // NewDefaultModel
-func NewDefaultModel() (*Model, error) {
+func NewDefaultModel(envs Environment) (*Model, error) {
 	// https://developer.android.com/studio/command-line/variables#envar
 	// Sets the path to the SDK installation directory.
 	// ANDROID_HOME, which also points to the SDK installation directory, is deprecated.
@@ -41,19 +54,13 @@ func NewDefaultModel() (*Model, error) {
 	//  If ANDROID_HOME is defined and contains a valid SDK installation, its value is used instead of the value in ANDROID_SDK_ROOT.
 	//  If ANDROID_HOME is not defined, the value in ANDROID_SDK_ROOT is used.
 	var warnings []string
-	for _, envKey := range []string{"ANDROID_HOME", "ANDROID_SDK_ROOT"} {
-		dir, isSet := os.LookupEnv(envKey)
-		if !isSet {
-			warnings = append(warnings, fmt.Sprintf("(%s) environment variable is unset", envKey))
+	for _, SDKdir := range []string{envs.AndroidHome, envs.AndroidSDKRoot} {
+		if SDKdir == "" {
+			warnings = append(warnings, fmt.Sprintf("environment variable is set but empty"))
 			continue
 		}
 
-		if dir == "" {
-			warnings = append(warnings, fmt.Sprintf("(%s) environment variable is set but empty", envKey))
-			continue
-		}
-
-		evaluatedSDKRoot, err := validateAndroidSDKRoot(dir)
+		evaluatedSDKRoot, err := validateAndroidSDKRoot(SDKdir)
 		if err != nil {
 			warnings = append(warnings, err.Error())
 			continue
@@ -65,8 +72,8 @@ func NewDefaultModel() (*Model, error) {
 	return nil, fmt.Errorf("could not locate Android SDK root directory: %s", warnings)
 }
 
-func validateAndroidSDKRoot(SDKRoot string) (string, error) {
-	evaluatedSDKRoot, err := filepath.EvalSymlinks(SDKRoot)
+func validateAndroidSDKRoot(androidSDKRoot string) (string, error) {
+	evaluatedSDKRoot, err := filepath.EvalSymlinks(androidSDKRoot)
 	if err != nil {
 		return "", err
 	}
