@@ -151,14 +151,14 @@ func prepareUnmodifiedIndicator(indicator string) string {
 	cmd := exec.Command("git", "ls-files", "--error-unmatch", indicatorFile)
 	cmd.Dir = indicatorDir
 	m := command.NewWithCmd(cmd)
-	code, _ := m.RunAndReturnExitCode()
+	code, err := m.RunAndReturnExitCode()
 	if code != 0 {
 		return indicator
 	}
 	cmd = exec.Command("git", "diff", "-s", "--exit-code", indicatorFile)
 	cmd.Dir = indicatorDir
 	m = command.NewWithCmd(cmd)
-	code, _ = m.RunAndReturnExitCode()
+	code, err = m.RunAndReturnExitCode()
 	if code == 0 {
 		return indicator
 	}
