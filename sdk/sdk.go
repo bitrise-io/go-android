@@ -16,12 +16,13 @@ type Model struct {
 	androidHome string
 }
 
-// Environment is used to pass in environemnt variables used to locate Android SDK
+// Environment is used to pass in environment variables used to locate Android SDK
 type Environment struct {
 	AndroidHome    string // ANDROID_HOME
 	AndroidSDKRoot string // ANDROID_SDK_ROOT
 }
 
+// NewEnvironment gets needed environment variables
 func NewEnvironment() *Environment {
 	return &Environment{
 		AndroidHome:    os.Getenv("ANDROID_HOME"),
@@ -35,7 +36,7 @@ type AndroidSdkInterface interface {
 	CmdlineToolsPath() (string, error)
 }
 
-// New ...
+// New creates a Model with a supplied Android SDK path
 func New(androidHome string) (*Model, error) {
 	evaluatedSDKRoot, err := validateAndroidSDKRoot(androidHome)
 	if err != nil {
@@ -45,7 +46,7 @@ func New(androidHome string) (*Model, error) {
 	return &Model{androidHome: evaluatedSDKRoot}, nil
 }
 
-// NewDefaultModel
+// NewDefaultModel locates Android SDK based on environement variables
 func NewDefaultModel(envs Environment) (*Model, error) {
 	// https://developer.android.com/studio/command-line/variables#envar
 	// Sets the path to the SDK installation directory.
@@ -56,7 +57,7 @@ func NewDefaultModel(envs Environment) (*Model, error) {
 	var warnings []string
 	for _, SDKdir := range []string{envs.AndroidHome, envs.AndroidSDKRoot} {
 		if SDKdir == "" {
-			warnings = append(warnings, fmt.Sprintf("environment variable is set but empty"))
+			warnings = append(warnings, "environment variable is set but empty")
 			continue
 		}
 
