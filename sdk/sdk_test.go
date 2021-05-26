@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bitrise-io/go-utils/envutil"
 	"github.com/bitrise-io/go-utils/fileutil"
 	"github.com/bitrise-io/go-utils/pathutil"
 	"github.com/stretchr/testify/require"
@@ -105,15 +104,15 @@ func TestNewDefaultModel(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		envs    map[string]string
+		envs    Environment
 		want    *Model
 		wantErr bool
 	}{
 		{
 			name: "ANDROID_HOME set",
-			envs: map[string]string{
-				"ANDROID_HOME":     androidHome,
-				"ANDROID_SDK_ROOT": "",
+			envs: Environment{
+				AndroidHome:    androidHome,
+				AndroidSDKRoot: "",
 			},
 			want: &Model{
 				androidHome: androidHome,
@@ -121,9 +120,9 @@ func TestNewDefaultModel(t *testing.T) {
 		},
 		{
 			name: "ANDROID_HOME, ANDROID_SDK_ROOT set",
-			envs: map[string]string{
-				"ANDROID_HOME":     androidHome,
-				"ANDROID_SDK_ROOT": sdkRoot,
+			envs: Environment{
+				AndroidHome:    androidHome,
+				AndroidSDKRoot: sdkRoot,
 			},
 			want: &Model{
 				androidHome: androidHome,
@@ -131,49 +130,30 @@ func TestNewDefaultModel(t *testing.T) {
 		},
 		{
 			name: "ANDROID_SDK_ROOT set",
-			envs: map[string]string{
-				"ANDROID_HOME":     "",
-				"ANDROID_SDK_ROOT": sdkRoot,
+			envs: Environment{
+				AndroidHome:    "",
+				AndroidSDKRoot: sdkRoot,
 			},
 			want: &Model{
 				androidHome: sdkRoot,
 			},
 		},
 		{
-			name: "neither ANDROID_HOME, ANDROID_SDK_ROOT set",
-			envs: map[string]string{
-				"ANDROID_HOME":     "",
-				"ANDROID_SDK_ROOT": "",
-			},
+			name:    "neither ANDROID_HOME, ANDROID_SDK_ROOT set",
+			envs:    Environment{},
 			want:    nil,
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var unsetEnvs []func() error
-			for key, value := range tt.envs {
-				unsetEnv, err := envutil.RevokableSetenv(key, value)
-				if err != nil {
-					t.Fatalf("failed to set env; %v", err)
-				}
-
-				unsetEnvs = append(unsetEnvs, unsetEnv)
-			}
-
-			got, err := NewDefaultModel(*NewEnvironment())
+			got, err := NewDefaultModel(tt.envs)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewDefaultModel() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("NewDefaultModel() = %v, want %v", got, tt.want)
-			}
-
-			for _, unsetEnv := range unsetEnvs {
-				if err := unsetEnv(); err != nil {
-					t.Fatalf("failed to unset env: %v", err)
-				}
 			}
 		})
 	}
