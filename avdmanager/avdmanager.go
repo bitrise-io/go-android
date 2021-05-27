@@ -11,7 +11,6 @@ import (
 	"github.com/bitrise-io/go-utils/command"
 	"github.com/bitrise-io/go-utils/log"
 	"github.com/bitrise-io/go-utils/pathutil"
-	"github.com/bitrise-tools/go-android/sdkmanager"
 )
 
 // Model ...
@@ -31,9 +30,7 @@ func New(sdk sdk.AndroidSdkInterface) (*Model, error) {
 	if exists, err := pathutil.IsPathExists(avdmanagerPath); err != nil {
 		return nil, err
 	} else if exists {
-		return &Model{
-			binPth: avdmanagerPath,
-		}, nil
+		return &Model{binPth: avdmanagerPath}, nil
 	}
 
 	if SDKManager, err := sdkmanager.New(sdk); err != nil {
@@ -52,15 +49,13 @@ func New(sdk sdk.AndroidSdkInterface) (*Model, error) {
 			if exists, err := pathutil.IsPathExists(avdmanagerPath); err != nil {
 				return nil, err
 			} else if exists {
-				return &Model{
-					binPth: avdmanagerPath,
-				}, nil
+				return &Model{binPth: avdmanagerPath}, nil
 			}
 		}
 		log.Printf("Updating SDK tools was unsuccessful, continuing with legacy avdmanager...")
 	}
 
-	legacyAvdmanagerPath := filepath.Join(sdk.GetAndroidHome(), "tools", "android")
+	legacyAvdmanagerPath := filepath.Join(cmdlineTools, "android")
 	if exists, err := pathutil.IsPathExists(legacyAvdmanagerPath); err != nil {
 		return nil, err
 	} else if exists {

@@ -146,6 +146,7 @@ func (model *Model) CmdlineToolsPath() (string, error) {
 		filepath.Join(model.GetAndroidHome(), "cmdline-tools", "latest", "bin"),
 		filepath.Join(model.GetAndroidHome(), "cmdline-tools", "*", "bin"),
 		filepath.Join(model.GetAndroidHome(), "tools", "bin"),
+		filepath.Join(model.GetAndroidHome(), "tools"), // legacy
 	}
 
 	var warnings []string

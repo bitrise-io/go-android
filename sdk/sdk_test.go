@@ -4,7 +4,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -156,13 +155,13 @@ func TestNewDefaultModel(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := NewDefaultModel(tt.envs)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NewDefaultModel() error = %v, wantErr %v", err, tt.wantErr)
-				return
+
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewDefaultModel() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -175,34 +174,41 @@ func TestModel_CmdlineToolsPath(t *testing.T) {
 		wantErr   bool
 	}{
 		{
+			name: "Legacy tools",
+			SDKlayout: []string{
+				"tools",
+			},
+			wantPath: "tools",
+		},
+		{
 			name: "Tools",
 			SDKlayout: []string{
-				"tools/bin",
+				filepath.Join("tools", "bin"),
 			},
-			wantPath: "tools/bin",
+			wantPath: filepath.Join("tools", "bin"),
 		},
 		{
 			name: "Command-line tools latest",
 			SDKlayout: []string{
-				"tools/bin",
-				"cmdline-tools/latest/bin",
-				"cmdline-tools/1.0/bin",
+				filepath.Join("tools", "bin"),
+				filepath.Join("cmdline-tools", "latest", "bin"),
+				filepath.Join("cmdline-tools", "1.0", "bin"),
 			},
-			wantPath: "cmdline-tools/latest/bin",
+			wantPath: filepath.Join("cmdline-tools", "latest", "bin"),
 		},
 		{
 			name: "Command-line tools fixed version",
 			SDKlayout: []string{
-				"cmdline-tools/1.0/bin",
+				filepath.Join("cmdline-tools", "1.0", "bin"),
 			},
-			wantPath: "cmdline-tools/1.0/bin",
+			wantPath: filepath.Join("cmdline-tools", "1.0", "bin"),
 		},
 		{
 			name: "Command-line tools fixed version",
 			SDKlayout: []string{
-				"cmdline-tools/1.0/bin",
+				filepath.Join("cmdline-tools", "1.0", "bin"),
 			},
-			wantPath: "cmdline-tools/1.0/bin",
+			wantPath: filepath.Join("cmdline-tools", "1.0", "bin"),
 		},
 		{
 			name:      "No valid path found",
@@ -236,13 +242,13 @@ func TestModel_CmdlineToolsPath(t *testing.T) {
 			if err != nil {
 				t.Log(err.Error())
 			}
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Model.CmdlineToolsPath() error = %v, wantErr %v", err, tt.wantErr)
-				return
+
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
-			if got != want {
-				t.Errorf("Model.CmdlineToolsPath() = %v, want %v", got, want)
-			}
+			require.Equal(t, want, got)
 		})
 	}
 }
