@@ -32,7 +32,7 @@ func New(sdk sdk.AndroidSdkInterface) (*Model, error) {
 		}, nil
 	}
 
-	legacyAvdmanagerPath := filepath.Join(cmdlineTools, "android")
+	legacyAvdmanagerPath := filepath.Join(sdk.GetAndroidHome(), "tools", "android")
 	if exists, err := pathutil.IsPathExists(legacyAvdmanagerPath); err != nil {
 		return nil, err
 	} else if exists {

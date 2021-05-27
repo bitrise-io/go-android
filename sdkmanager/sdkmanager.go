@@ -34,7 +34,7 @@ func New(sdk sdk.AndroidSdkInterface) (*Model, error) {
 		}, nil
 	}
 
-	legacySdkmanagerPath := filepath.Join(cmdlineToolsPath, "android")
+	legacySdkmanagerPath := filepath.Join(sdk.GetAndroidHome(), "tools", "android")
 	if exist, err := pathutil.IsPathExists(legacySdkmanagerPath); err != nil {
 		return nil, err
 	} else if exist {

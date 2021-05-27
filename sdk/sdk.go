@@ -57,7 +57,7 @@ func NewDefaultModel(envs Environment) (*Model, error) {
 	var warnings []string
 	for _, SDKdir := range []string{envs.AndroidHome, envs.AndroidSDKRoot} {
 		if SDKdir == "" {
-			warnings = append(warnings, "environment variable is set but empty")
+			warnings = append(warnings, "environment variable is unset or empty")
 			continue
 		}
 
@@ -146,9 +146,9 @@ func (model *Model) CmdlineToolsPath() (string, error) {
 		filepath.Join(model.GetAndroidHome(), "cmdline-tools", "latest", "bin"),
 		filepath.Join(model.GetAndroidHome(), "cmdline-tools", "*", "bin"),
 		filepath.Join(model.GetAndroidHome(), "tools", "bin"),
-		filepath.Join(model.GetAndroidHome(), "tools"), // legacy
 	}
 
+	var warnings []string
 	for _, dirPattern := range toolPaths {
 		matches, err := filepath.Glob(dirPattern)
 		if err != nil {
@@ -160,18 +160,16 @@ func (model *Model) CmdlineToolsPath() (string, error) {
 		}
 
 		sdkmanagerPath := matches[0]
-
-		fileInfo, err := os.Stat(sdkmanagerPath)
-		if err != nil {
-			return "", fmt.Errorf("failed to get file info for (%s): %v", sdkmanagerPath, err)
-		}
-
-		if !fileInfo.IsDir() {
-			return "", fmt.Errorf("(%s) is not a directory, as expected", sdkmanagerPath)
+		if exists, err := pathutil.IsDirExists(sdkmanagerPath); err != nil {
+			warnings = append(warnings, fmt.Sprintf("failed to validate path (%s): %v", sdkmanagerPath, err))
+			continue
+		} else if !exists {
+			warnings = append(warnings, "path (%s) does not exist or it is not a directory")
+			continue
 		}
 
 		return sdkmanagerPath, nil
 	}
 
-	return "", fmt.Errorf("failed to locate Android command-line tools directory, searched paths: %s", toolPaths)
+	return "", fmt.Errorf("failed to locate Android command-line tools directory on paths (%s), warnings: %s", toolPaths, warnings)
 }

@@ -144,6 +144,14 @@ func TestNewDefaultModel(t *testing.T) {
 			want:    nil,
 			wantErr: true,
 		},
+		{
+			name: "ANDROID_HOME set, non-existent invalid path",
+			envs: Environment{
+				AndroidHome: filepath.Join(os.TempDir(), "_invalid", "_android_sdk_path"),
+			},
+			want:    nil,
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -176,6 +184,7 @@ func TestModel_CmdlineToolsPath(t *testing.T) {
 		{
 			name: "Command-line tools latest",
 			SDKlayout: []string{
+				"tools/bin",
 				"cmdline-tools/latest/bin",
 				"cmdline-tools/1.0/bin",
 			},
@@ -187,6 +196,19 @@ func TestModel_CmdlineToolsPath(t *testing.T) {
 				"cmdline-tools/1.0/bin",
 			},
 			wantPath: "cmdline-tools/1.0/bin",
+		},
+		{
+			name: "Command-line tools fixed version",
+			SDKlayout: []string{
+				"cmdline-tools/1.0/bin",
+			},
+			wantPath: "cmdline-tools/1.0/bin",
+		},
+		{
+			name:      "No valid path found",
+			SDKlayout: []string{},
+			wantPath:  "",
+			wantErr:   true,
 		},
 	}
 	for _, tt := range tests {
@@ -205,8 +227,15 @@ func TestModel_CmdlineToolsPath(t *testing.T) {
 			model := &Model{
 				androidHome: SDKRoot,
 			}
-			want := filepath.Join(SDKRoot, tt.wantPath)
+			want := ""
+			if !tt.wantErr {
+				want = filepath.Join(SDKRoot, tt.wantPath)
+			}
+
 			got, err := model.CmdlineToolsPath()
+			if err != nil {
+				t.Log(err.Error())
+			}
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Model.CmdlineToolsPath() error = %v, wantErr %v", err, tt.wantErr)
 				return
