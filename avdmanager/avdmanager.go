@@ -5,12 +5,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/bitrise-io/go-utils/command"
-	"github.com/bitrise-io/go-utils/log"
-	"github.com/bitrise-io/go-utils/pathutil"
 	"github.com/bitrise-io/go-android/sdk"
 	"github.com/bitrise-io/go-android/sdkcomponent"
 	"github.com/bitrise-io/go-android/sdkmanager"
+	"github.com/bitrise-io/go-utils/command"
+	"github.com/bitrise-io/go-utils/log"
+	"github.com/bitrise-io/go-utils/pathutil"
 )
 
 // Model ...
@@ -19,64 +19,53 @@ type Model struct {
 	binPth string
 }
 
-// IsLegacyAVDManager ...
-func IsLegacyAVDManager(androidHome string) (bool, error) {
-	exist, err := pathutil.IsPathExists(filepath.Join(androidHome, "tools", "bin", "avdmanager"))
-	return !exist, err
-}
-
 // New ...
 func New(sdk sdk.AndroidSdkInterface) (*Model, error) {
-	binPth := filepath.Join(sdk.GetAndroidHome(), "tools", "bin", "avdmanager")
-
-	legacySdk, err := sdkmanager.IsLegacySDKManager(sdk.GetAndroidHome())
+	cmdlineTools, err := sdk.CmdlineToolsPath()
 	if err != nil {
 		return nil, err
 	}
 
-	legacyAvd, err := IsLegacyAVDManager(sdk.GetAndroidHome())
-	if err != nil {
+	avdmanagerPath := filepath.Join(cmdlineTools, "avdmanager")
+	if exists, err := pathutil.IsPathExists(avdmanagerPath); err != nil {
 		return nil, err
-	} else if legacyAvd && legacySdk {
-		binPth = filepath.Join(sdk.GetAndroidHome(), "tools", "android")
-	} else if legacyAvd && !legacySdk {
+	} else if exists {
+		return &Model{binPth: avdmanagerPath}, nil
+	}
+
+	if SDKManager, err := sdkmanager.New(sdk); err != nil {
+		log.Warnf("%v", err)
+	} else if !SDKManager.IsLegacySDK() {
 		fmt.Println()
 		log.Warnf("Found sdkmanager but no avdmanager, updating SDK Tools...")
-		binPth = filepath.Join(sdk.GetAndroidHome(), "tools", "android")
-		sdkManager, err := sdkmanager.New(sdk)
-		if err == nil {
-			sdkToolComponent := sdkcomponent.SDKTool{}
-			updateCmd := sdkManager.InstallCommand(sdkToolComponent)
-			updateCmd.SetStderr(os.Stderr)
-			updateCmd.SetStdout(os.Stdout)
-			if err := updateCmd.Run(); err == nil {
-				legacyAvd, err = IsLegacyAVDManager(sdk.GetAndroidHome())
-				if err == nil && !legacyAvd {
-					log.Printf("- avdmanager successfully installed")
-					binPth = filepath.Join(sdk.GetAndroidHome(), "tools", "bin", "avdmanager")
-				} else if legacyAvd {
-					log.Printf("- updating SDK tools was unsuccessful, continuing with legacy avd manager...")
-				}
-			} else {
-				log.Errorf("Failed to run command:")
-				fmt.Println()
-				log.Donef("$ %s", updateCmd.PrintableCommandArgs())
-				fmt.Println()
-				log.Warnf("- continuing with legacy avd manager")
+
+		sdkToolComponent := sdkcomponent.SDKTool{}
+		updateCmd := SDKManager.InstallCommand(sdkToolComponent)
+		updateCmd.SetStderr(os.Stderr).SetStdout(os.Stdout)
+		log.Infof("$ %s", updateCmd.PrintableCommandArgs())
+		if err := updateCmd.Run(); err != nil {
+			log.Errorf("Installing avdmanager failed: %v", err)
+		} else {
+			if exists, err := pathutil.IsPathExists(avdmanagerPath); err != nil {
+				return nil, err
+			} else if exists {
+				return &Model{binPth: avdmanagerPath}, nil
 			}
 		}
+		log.Printf("Updating SDK tools was unsuccessful, continuing with legacy avdmanager...")
 	}
 
-	if exist, err := pathutil.IsPathExists(binPth); err != nil {
+	legacyAvdmanagerPath := filepath.Join(cmdlineTools, "android")
+	if exists, err := pathutil.IsPathExists(legacyAvdmanagerPath); err != nil {
 		return nil, err
-	} else if !exist {
-		return nil, fmt.Errorf("no avd manager tool found at: %s", binPth)
+	} else if exists {
+		return &Model{
+			legacy: true,
+			binPth: avdmanagerPath,
+		}, nil
 	}
 
-	return &Model{
-		legacy: legacyAvd,
-		binPth: binPth,
-	}, nil
+	return nil, fmt.Errorf("no avdmanager found at %s", avdmanagerPath)
 }
 
 // CreateAVDCommand ...
