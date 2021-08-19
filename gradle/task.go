@@ -88,7 +88,7 @@ func cleanModuleName(s string) string {
 }
 
 // GetCommand ...
-func (task *Task) GetCommand(v Variants, args ...string) *command.Command {
+func (task *Task) GetCommand(v Variants, args ...string) command.Command {
 	var a []string
 	for module, variants := range v {
 		for _, variant := range variants {
@@ -100,6 +100,5 @@ func (task *Task) GetCommand(v Variants, args ...string) *command.Command {
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
 	}
-	cmd := task.project.cmdFactory.Create(filepath.Join(task.project.location, "gradlew"), append(a, args...), &cmdOpts)
-	return &cmd
+	return task.project.cmdFactory.Create(filepath.Join(task.project.location, "gradlew"), append(a, args...), &cmdOpts)
 }

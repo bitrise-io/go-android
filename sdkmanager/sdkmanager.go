@@ -69,12 +69,10 @@ func (model Model) IsInstalled(component sdkcomponent.Model) (bool, error) {
 }
 
 // InstallCommand ...
-func (model Model) InstallCommand(component sdkcomponent.Model) *command.Command {
+func (model Model) InstallCommand(component sdkcomponent.Model) command.Command {
 	if model.legacy {
 		args := []string{"update", "sdk", "--no-ui", "--all", "--filter", component.GetLegacySDKStylePath()}
-		cmd := model.cmdFactory.Create(model.binPth, args, nil)
-		return &cmd
+		return model.cmdFactory.Create(model.binPth, args, nil)
 	}
-	cmd := model.cmdFactory.Create(model.binPth, []string{component.GetSDKStylePath()}, nil)
-	return &cmd
+	return model.cmdFactory.Create(model.binPth, []string{component.GetSDKStylePath()}, nil)
 }
