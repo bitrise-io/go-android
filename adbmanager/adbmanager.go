@@ -36,29 +36,6 @@ func (model Model) DevicesCmd() *command.Command {
 	return &cmd
 }
 
-// IsDeviceBooted ...
-func (model Model) IsDeviceBooted(serial string) (bool, error) {
-	devBootCmd := model.cmdFactory.Create(model.binPth, []string{"-s", serial, "shell", "getprop dev.bootcomplete"}, nil)
-	devBootOut, err := devBootCmd.RunAndReturnTrimmedCombinedOutput()
-	if err != nil {
-		return false, err
-	}
-
-	sysBootCmd := model.cmdFactory.Create(model.binPth, []string{"-s", serial, "shell", "getprop sys.boot_completed"}, nil)
-	sysBootOut, err := sysBootCmd.RunAndReturnTrimmedCombinedOutput()
-	if err != nil {
-		return false, err
-	}
-
-	bootAnimCmd := model.cmdFactory.Create(model.binPth, []string{"-s", serial, "shell", "getprop init.svc.bootanim"}, nil)
-	bootAnimOut, err := bootAnimCmd.RunAndReturnTrimmedCombinedOutput()
-	if err != nil {
-		return false, err
-	}
-
-	return devBootOut == "1" && sysBootOut == "1" && bootAnimOut == "stopped", nil
-}
-
 // UnlockDevice ...
 func (model Model) UnlockDevice(serial string) error {
 	keyEvent82Cmd := model.cmdFactory.Create(model.binPth, []string{"-s", serial, "shell", "input", "82", "&"}, nil)
