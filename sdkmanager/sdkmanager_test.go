@@ -1,6 +1,8 @@
 package sdkmanager
 
 import (
+	"github.com/bitrise-io/go-utils/command"
+	"github.com/bitrise-io/go-utils/env"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -87,7 +89,7 @@ func TestNew(t *testing.T) {
 				legacy:      tt.wantLegacy,
 			}
 
-			got, err := New(sdk)
+			got, err := New(sdk, command.NewFactory(env.NewRepository()))
 			if tt.wantErr {
 				require.Error(t, err, "New()")
 				require.Nil(t, got)
