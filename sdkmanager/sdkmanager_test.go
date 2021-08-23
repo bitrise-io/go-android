@@ -87,6 +87,7 @@ func TestNew(t *testing.T) {
 				androidHome: sdkRoot,
 				binPth:      filepath.Join(sdkRoot, tt.wantPath),
 				legacy:      tt.wantLegacy,
+				cmdFactory:  command.NewFactory(env.NewRepository()),
 			}
 
 			got, err := New(sdk, command.NewFactory(env.NewRepository()))
