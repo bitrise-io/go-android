@@ -1,6 +1,8 @@
 package sdkmanager
 
 import (
+	"github.com/bitrise-io/go-utils/command"
+	"github.com/bitrise-io/go-utils/env"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -85,9 +87,10 @@ func TestNew(t *testing.T) {
 				androidHome: sdkRoot,
 				binPth:      filepath.Join(sdkRoot, tt.wantPath),
 				legacy:      tt.wantLegacy,
+				cmdFactory:  command.NewFactory(env.NewRepository()),
 			}
 
-			got, err := New(sdk)
+			got, err := New(sdk, command.NewFactory(env.NewRepository()))
 			if tt.wantErr {
 				require.Error(t, err, "New()")
 				require.Nil(t, got)
