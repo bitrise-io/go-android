@@ -3,6 +3,7 @@ package sdkmanager
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/bitrise-io/go-android/sdk"
 	"github.com/bitrise-io/go-android/sdkcomponent"
@@ -70,5 +71,7 @@ func (model Model) InstallCommand(component sdkcomponent.Model) *command.Model {
 	if model.legacy {
 		return command.New(model.binPth, "update", "sdk", "--no-ui", "--all", "--filter", component.GetLegacySDKStylePath())
 	}
-	return command.New(model.binPth, component.GetSDKStylePath())
+	cmd := command.New(model.binPth, component.GetSDKStylePath())
+	cmd.SetStdin(strings.NewReader("y"))
+	return cmd
 }
