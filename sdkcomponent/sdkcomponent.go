@@ -255,6 +255,7 @@ func (component Extras) InstallationIndicatorFile() string {
 	return ""
 }
 
+// NDK ...
 type NDK struct {
 	Version string
 }
