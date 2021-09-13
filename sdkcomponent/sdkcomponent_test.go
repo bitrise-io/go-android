@@ -75,3 +75,13 @@ func TestBuildToolComponent(t *testing.T) {
 	require.Equal(t, "build-tools-19.1.0", component.GetLegacySDKStylePath())
 	require.Equal(t, "build-tools/19.1.0", component.InstallPathInAndroidHome())
 }
+
+func TestNDKComponent(t *testing.T) {
+	component := NDK{
+		Version: "23.0.7599858",
+	}
+
+	require.Equal(t, "ndk;23.0.7599858", component.GetSDKStylePath())
+	require.Equal(t, "ndk/23.0.7599858", component.InstallPathInAndroidHome())
+	require.Equal(t, "source.properties", component.InstallationIndicatorFile())
+}
