@@ -15,8 +15,9 @@ type Task struct {
 }
 
 // GetVariants ...
-func (task *Task) GetVariants() (Variants, error) {
-	tasksOutput, err := getGradleOutput(task.project.location, "tasks", "--all", "--console=plain", "--quiet")
+func (task *Task) GetVariants(args ...string) (Variants, error) {
+	args = append([]string{"tasks", "--all", "--console=plain", "--quiet"}, args...)
+	tasksOutput, err := getGradleOutput(task.project.location, args...)
 	if err != nil {
 		return nil, fmt.Errorf("%s, %s", tasksOutput, err)
 	}
@@ -24,8 +25,8 @@ func (task *Task) GetVariants() (Variants, error) {
 }
 
 func (task *Task) parseVariants(gradleOutput string) Variants {
-	//example gradleOutput:
-	//"
+	// example gradleOutput:
+	// "
 	// lintMyflavorokStaging - Runs lint on the MyflavorokStaging build.
 	// lintMyflavorRelease - Runs lint on the MyflavorRelease build.
 	// lintVitalMyflavorRelease - Runs lint on the MyflavorRelease build.
@@ -46,8 +47,8 @@ lines:
 		split := strings.Split(l, ":")
 		size := len(split)
 		if size > 1 {
-			module = strings.Join(split[:size - 1], ":")
-			l = split[size - 1]
+			module = strings.Join(split[:size-1], ":")
+			l = split[size-1]
 		}
 		// module removed if any
 		if strings.HasPrefix(l, task.name) {
