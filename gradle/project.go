@@ -2,7 +2,6 @@ package gradle
 
 import (
 	"fmt"
-	"github.com/bitrise-io/go-utils/command"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -11,7 +10,8 @@ import (
 
 	"github.com/bitrise-io/go-utils/log"
 	"github.com/bitrise-io/go-utils/pathutil"
-	glob "github.com/ryanuber/go-glob"
+	"github.com/bitrise-io/go-utils/v2/command"
+	"github.com/ryanuber/go-glob"
 )
 
 // Project ...

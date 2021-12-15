@@ -7,8 +7,8 @@ import (
 
 	"github.com/bitrise-io/go-android/sdk"
 	"github.com/bitrise-io/go-android/sdkcomponent"
-	"github.com/bitrise-io/go-utils/command"
 	"github.com/bitrise-io/go-utils/pathutil"
+	"github.com/bitrise-io/go-utils/v2/command"
 )
 
 // Model ...
@@ -21,7 +21,7 @@ type Model struct {
 
 // New ...
 func New(sdk sdk.AndroidSdkInterface, cmdFactory command.Factory) (*Model, error) {
-	cmdlineToolsPath, err := sdk.CmdlineToolsPath()
+	cmdlineToolsPath, err := sdk.CmdlineTools()
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +31,7 @@ func New(sdk sdk.AndroidSdkInterface, cmdFactory command.Factory) (*Model, error
 		return nil, err
 	} else if exist {
 		return &Model{
-			androidHome: sdk.GetAndroidHome(),
+			androidHome: sdk.AndroidHome(),
 			binPth:      sdkmanagerPath,
 			cmdFactory:  cmdFactory,
 		}, nil
@@ -42,7 +42,7 @@ func New(sdk sdk.AndroidSdkInterface, cmdFactory command.Factory) (*Model, error
 		return nil, err
 	} else if exist {
 		return &Model{
-			androidHome: sdk.GetAndroidHome(),
+			androidHome: sdk.AndroidHome(),
 			legacy:      true,
 			binPth:      legacySdkmanagerPath,
 			cmdFactory:  cmdFactory,

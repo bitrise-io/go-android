@@ -1,12 +1,13 @@
 package sdkmanager
 
 import (
-	"github.com/bitrise-io/go-utils/command"
-	"github.com/bitrise-io/go-utils/env"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/bitrise-io/go-utils/v2/command"
+	"github.com/bitrise-io/go-utils/v2/env"
 
 	"github.com/bitrise-io/go-android/sdk"
 	"github.com/stretchr/testify/require"

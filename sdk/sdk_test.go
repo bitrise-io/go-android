@@ -25,7 +25,7 @@ func TestLatestBuildToolsDir(t *testing.T) {
 	sdk, err := New(tmpDir)
 	require.NoError(t, err)
 
-	latestBuildToolsDir, err := sdk.LatestBuildToolsDir()
+	latestBuildToolsDir, err := sdk.BuildTools()
 	require.NoError(t, err)
 	require.Equal(t, true, strings.Contains(latestBuildToolsDir, filepath.Join("build-tools", "25.0.3")), latestBuildToolsDir)
 }
@@ -37,7 +37,7 @@ func TestNoBuildToolsDir(t *testing.T) {
 	sdk, err := New(tmpDir)
 	require.NoError(t, err)
 
-	_, err = sdk.LatestBuildToolsDir()
+	_, err = sdk.BuildTools()
 	require.EqualError(t, err, "failed to find latest build-tools dir")
 }
 
@@ -60,14 +60,14 @@ func TestLatestBuildToolPath(t *testing.T) {
 
 	t.Log("zipalign - exist")
 	{
-		pth, err := sdk.LatestBuildToolPath("zipalign")
+		pth, err := sdk.BuildTool("zipalign")
 		require.NoError(t, err)
 		require.Equal(t, true, strings.Contains(pth, filepath.Join("build-tools", "25.0.3", "zipalign")), pth)
 	}
 
 	t.Log("aapt - NOT exist")
 	{
-		pth, err := sdk.LatestBuildToolPath("aapt")
+		pth, err := sdk.BuildTool("aapt")
 		require.Equal(t, true, strings.Contains(err.Error(), "tool (aapt) not found at:"))
 		require.Equal(t, "", pth)
 	}
@@ -238,7 +238,7 @@ func TestModel_CmdlineToolsPath(t *testing.T) {
 				want = filepath.Join(SDKRoot, tt.wantPath)
 			}
 
-			got, err := model.CmdlineToolsPath()
+			got, err := model.CmdlineTools()
 			if err != nil {
 				t.Log(err.Error())
 			}
