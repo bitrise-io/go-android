@@ -69,13 +69,14 @@ func (m Manager) Devices() (map[string]string, error) {
 	return parseDevicesOut(out)
 }
 
-// FirstNewDeviceSerial ...
-func (m Manager) FirstNewDeviceSerial(previousDevices map[string]string) (string, error) {
+// NewDevice ...
+func (m Manager) NewDevice(previousDevices map[string]string) (string, string, error) {
 	devices, err := m.Devices()
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	return findFirstNewDeviceSerial(previousDevices, devices), nil
+	serial, state := findNewDevice(previousDevices, devices)
+	return serial, state, nil
 }
 
 // WaitForDeviceShell ...
@@ -132,12 +133,12 @@ func parseDevicesOut(out string) (map[string]string, error) {
 	return deviceStateMap, nil
 }
 
-func findFirstNewDeviceSerial(old, new map[string]string) string {
-	for s := range new {
-		_, ok := old[s]
+func findNewDevice(old, new map[string]string) (serial string, state string) {
+	for serial, state = range new {
+		_, ok := old[serial]
 		if !ok {
-			return s
+			return
 		}
 	}
-	return ""
+	return "", ""
 }
