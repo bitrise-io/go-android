@@ -46,3 +46,27 @@ func (model Model) UnlockDevice(serial string) error {
 	keyEvent1Cmd := model.cmdFactory.Create(model.binPth, []string{"-s", serial, "shell", "input", "1", "&"}, nil)
 	return keyEvent1Cmd.Run()
 }
+
+func (model Model) InstallAPKCmd(pathToAPK string, commandOptions *command.Opts) *command.Command {
+	cmd := model.cmdFactory.Create(model.binPth, []string{"install", pathToAPK}, commandOptions)
+	return &cmd
+}
+
+func (model Model) RunInstrumentedTestsCmd(
+	packageName string,
+	testRunnerClass string,
+	additionalTestingOptions []string,
+	commandOptions *command.Opts,
+) *command.Command {
+	args := []string{
+		"shell",
+		"am", "instrument",
+		"-w", packageName + "/" + testRunnerClass,
+	}
+	if len(additionalTestingOptions) > 0 {
+		args = append(args, "-e")
+		args = append(args, additionalTestingOptions...)
+	}
+	cmd := model.cmdFactory.Create(model.binPth, args, commandOptions)
+	return &cmd
+}
