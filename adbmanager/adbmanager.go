@@ -47,11 +47,15 @@ func (model Model) UnlockDevice(serial string) error {
 	return keyEvent1Cmd.Run()
 }
 
+// InstallAPKCmd builds and returns a `Command` for installing APKs on an attached device or emulator.
+// The `Command` can than be run by the consumer without needing to know the implementation details.
 func (model Model) InstallAPKCmd(pathToAPK string, commandOptions *command.Opts) command.Command {
 	cmd := model.cmdFactory.Create(model.binPth, []string{"install", pathToAPK}, commandOptions)
 	return cmd
 }
 
+// RunInstrumentedTestsCmd builds and returns a `Command` for running instrumented tests on an attached device or emulator.
+// The `Command` can than be run by the consumer without needing to know the implementation details.
 func (model Model) RunInstrumentedTestsCmd(
 	packageName string,
 	testRunnerClass string,
