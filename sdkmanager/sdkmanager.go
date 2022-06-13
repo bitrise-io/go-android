@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bitrise-io/go-android/sdk"
-	"github.com/bitrise-io/go-android/sdkcomponent"
+	"github.com/bitrise-io/go-android/v2/sdk"
+	"github.com/bitrise-io/go-android/v2/sdkcomponent"
 	"github.com/bitrise-io/go-utils/pathutil"
 	"github.com/bitrise-io/go-utils/v2/command"
 )
