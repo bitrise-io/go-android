@@ -1,4 +1,4 @@
-module github.com/bitrise-io/go-android
+module github.com/bitrise-io/go-android/v2
 
 go 1.16
 

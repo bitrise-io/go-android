@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/bitrise-io/go-android/sdk"
+	"github.com/bitrise-io/go-android/v2/sdk"
 	"github.com/stretchr/testify/require"
 )
 
