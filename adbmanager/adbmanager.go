@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 
 	"github.com/bitrise-io/go-android/sdk"
-	"github.com/bitrise-io/go-utils/command"
 	"github.com/bitrise-io/go-utils/pathutil"
+	"github.com/bitrise-io/go-utils/v2/command"
 )
 
 // Model ...
@@ -45,4 +45,32 @@ func (model Model) UnlockDevice(serial string) error {
 
 	keyEvent1Cmd := model.cmdFactory.Create(model.binPth, []string{"-s", serial, "shell", "input", "1", "&"}, nil)
 	return keyEvent1Cmd.Run()
+}
+
+// InstallAPKCmd builds and returns a `Command` for installing APKs on an attached device or emulator.
+// The `Command` can than be run by the consumer without needing to know the implementation details.
+func (model Model) InstallAPKCmd(pathToAPK string, commandOptions *command.Opts) command.Command {
+	cmd := model.cmdFactory.Create(model.binPth, []string{"install", pathToAPK}, commandOptions)
+	return cmd
+}
+
+// RunInstrumentedTestsCmd builds and returns a `Command` for running instrumented tests on an attached device or emulator.
+// The `Command` can than be run by the consumer without needing to know the implementation details.
+func (model Model) RunInstrumentedTestsCmd(
+	packageName string,
+	testRunnerClass string,
+	additionalTestingOptions []string,
+	commandOptions *command.Opts,
+) command.Command {
+	args := []string{
+		"shell",
+		"am", "instrument",
+		"-w", packageName + "/" + testRunnerClass,
+	}
+	if len(additionalTestingOptions) > 0 {
+		args = append(args, "-e")
+		args = append(args, additionalTestingOptions...)
+	}
+	cmd := model.cmdFactory.Create(model.binPth, args, commandOptions)
+	return cmd
 }

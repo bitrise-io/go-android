@@ -1,8 +1,8 @@
 package sdkmanager
 
 import (
-	"github.com/bitrise-io/go-utils/command"
-	"github.com/bitrise-io/go-utils/env"
+	"github.com/bitrise-io/go-utils/v2/command"
+	"github.com/bitrise-io/go-utils/v2/env"
 	"io/ioutil"
 	"os"
 	"path/filepath"
