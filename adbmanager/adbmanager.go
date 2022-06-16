@@ -62,15 +62,12 @@ func (model Model) RunInstrumentedTestsCmd(
 	additionalTestingOptions []string,
 	commandOptions *command.Opts,
 ) command.Command {
-	args := []string{
-		"shell",
-		"am", "instrument",
-		"-w", packageName + "/" + testRunnerClass,
-	}
+	args := []string{"shell", "am", "instrument"}
 	if len(additionalTestingOptions) > 0 {
 		args = append(args, "-e")
 		args = append(args, additionalTestingOptions...)
 	}
+	args = append(args, "-w", packageName+"/"+testRunnerClass)
 	cmd := model.cmdFactory.Create(model.binPth, args, commandOptions)
 	return cmd
 }
