@@ -61,10 +61,10 @@ func (model Model) InstallAPKCmd(pathToAPK string, commandOptions *command.Opts)
 //
 // Example:
 //
-// If a value of `KEY1 true KEY2 false` is passed to this input,
+// If a value of `{"KEY1", "value1", "KEY2", "value2"}` is passed to `additionalTestingOptions`,
 // then it will be passed to the `adb` command like so:
 //
-// adb shell am instrument -e "KEY1" "true" "KEY2" "false" [...]
+// adb shell am instrument -e "KEY1" "value1" "KEY2" "value2" [...]
 //
 // See `adb` documentation for more info: https://developer.android.com/studio/command-line/adb#am
 func (model Model) RunInstrumentedTestsCmd(
