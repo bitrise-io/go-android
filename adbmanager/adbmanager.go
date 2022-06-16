@@ -56,18 +56,38 @@ func (model Model) InstallAPKCmd(pathToAPK string, commandOptions *command.Opts)
 
 // RunInstrumentedTestsCmd builds and returns a `Command` for running instrumented tests on an attached device or emulator.
 // The `Command` can than be run by the consumer without needing to know the implementation details.
+//
+// `additionalTestingOptions` is a list of arbitrary key value pairs to be passed to the test runner.
+//
+// Example:
+//
+// If a value of `KEY1 true KEY2 false` is passed to this input,
+// then it will be passed to the `adb` command like so:
+//
+// adb shell am instrument -e "KEY1" "true" "KEY2" "false" [...]
+//
+// See `adb` documentation for more info: https://developer.android.com/studio/command-line/adb#am
 func (model Model) RunInstrumentedTestsCmd(
 	packageName string,
 	testRunnerClass string,
 	additionalTestingOptions []string,
 	commandOptions *command.Opts,
 ) command.Command {
-	args := []string{"shell", "am", "instrument"}
+	args := []string{
+		"shell",
+		"am",
+		"instrument",
+		"-w", // Tells `am` (activity manager) to wait for instrumentation to finish before returning
+	}
+
 	if len(additionalTestingOptions) > 0 {
 		args = append(args, "-e")
 		args = append(args, additionalTestingOptions...)
 	}
-	args = append(args, "-w", packageName+"/"+testRunnerClass)
+
+	component := packageName + "/" + testRunnerClass
+	args = append(args, component)
+
 	cmd := model.cmdFactory.Create(model.binPth, args, commandOptions)
 	return cmd
 }
