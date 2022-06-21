@@ -1,27 +1,30 @@
 package adbmanager
 
 import (
-	"github.com/bitrise-io/go-utils/v2/env"
-	"github.com/stretchr/testify/require"
 	"testing"
 
 	"github.com/bitrise-io/go-utils/v2/command"
+	"github.com/bitrise-io/go-utils/v2/env"
+	"github.com/stretchr/testify/require"
 )
 
-func TestModel_InstallAPKCmd(t *testing.T) {
+func Test_GivenAPKPath_WhenCreateInstallAPKCmd_ThenCreatesExpectedCommand(t *testing.T) {
 	// Given
 	mockAPKPath := "/path/to/apk"
 
 	// When
-	testCommand := mockModel().InstallAPKCmd(mockAPKPath, &command.Opts{})
+	testCommand := mockModel().InstallAPKCmd(
+		mockAPKPath,
+		&command.Opts{},
+	)
 
 	// Then
-	actualCMDArgs := testCommand.PrintableCommandArgs()
-	expectedCommandArgs := ` "install" "` + mockAPKPath + `"`
-	require.Equal(t, expectedCommandArgs, actualCMDArgs)
+	actualArgs := testCommand.PrintableCommandArgs()
+	expectedArgs := `adb "install" "/path/to/apk"`
+	require.Equal(t, expectedArgs, actualArgs)
 }
 
-func TestModel_RunInstrumentedTestsCmd_WithAdditionalTestingOptions(t *testing.T) {
+func Test_GivenNoAdditionalTestingOptions_WhenCreateRunInstrumentedTestsCmd_ThenCreatesExpectedCommand(t *testing.T) {
 	// Given
 	mockPackageName := "com.package.name"
 	mockTestRunnerClass := "mock.testrunner.class"
@@ -35,21 +38,16 @@ func TestModel_RunInstrumentedTestsCmd_WithAdditionalTestingOptions(t *testing.T
 	)
 
 	// Then
-	actualCMDArgs := testCommand.PrintableCommandArgs()
-	expectedCommandArgs := ` "shell" "am" "instrument" "-w"`
-	expectedCommandArgs += ` "` + mockPackageName + `/` + mockTestRunnerClass + `"`
-	require.Equal(t, expectedCommandArgs, actualCMDArgs)
+	actualArgs := testCommand.PrintableCommandArgs()
+	expectedArgs := `adb "shell" "am" "instrument" "-w" "com.package.name/mock.testrunner.class"`
+	require.Equal(t, expectedArgs, actualArgs)
 }
 
-func TestModel_RunInstrumentedTestsCmd_WithoutAdditionalTestingOptions(t *testing.T) {
+func Test_GivenAdditionalTestingOptions_WhenCreateRunInstrumentedTestsCmd_ThenCreatesExpectedCommand(t *testing.T) {
 	// Given
 	mockPackageName := "com.package.name"
 	mockTestRunnerClass := "mock.testrunner.class"
-	mockTestingOpt1 := "opt1"
-	mockTestingOpt2 := "opt2"
-	mockAdditionalTestingOptions := []string{
-		mockTestingOpt1, mockTestingOpt2,
-	}
+	mockAdditionalTestingOptions := []string{"opt1", "opt2"}
 
 	// When
 	testCommand := mockModel().RunInstrumentedTestsCmd(
@@ -60,18 +58,16 @@ func TestModel_RunInstrumentedTestsCmd_WithoutAdditionalTestingOptions(t *testin
 	)
 
 	// Then
-	actualCMDArgs := testCommand.PrintableCommandArgs()
-	expectedCommandArgs := ` "shell" "am" "instrument" "-w"`
-	expectedCommandArgs += ` "-e" "` + mockTestingOpt1 + `" "` + mockTestingOpt2 + `"`
-	expectedCommandArgs += ` "` + mockPackageName + `/` + mockTestRunnerClass + `"`
-	require.Equal(t, expectedCommandArgs, actualCMDArgs)
+	actualArgs := testCommand.PrintableCommandArgs()
+	expectedArgs := `adb "shell" "am" "instrument" "-w" "-e" "opt1" "opt2" "com.package.name/mock.testrunner.class"`
+	require.Equal(t, expectedArgs, actualArgs)
 }
 
 // Helpers
 
 func mockModel() Model {
 	return Model{
-		binPth:     "",
+		binPth:     "adb",
 		cmdFactory: command.NewFactory(env.NewRepository()),
 	}
 }
