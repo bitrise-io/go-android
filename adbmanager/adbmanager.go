@@ -2,7 +2,6 @@ package adbmanager
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/bitrise-io/go-android/v2/sdk"
@@ -95,7 +94,7 @@ func (model Model) RunInstrumentedTestsCmd(
 
 // WaitForDeviceThenShellCmd returns a command that first waits for a device to come online, then executes the provided
 // command(s) on the device shell
-func (model Model) WaitForDeviceThenShellCmd(serial string, commands ...string) command.Command {
+func (model Model) WaitForDeviceThenShellCmd(serial string, commandOptions *command.Opts, commands ...string) command.Command {
 	var args []string
 	if serial != "" {
 		args = append(args, "-s", serial)
@@ -103,16 +102,13 @@ func (model Model) WaitForDeviceThenShellCmd(serial string, commands ...string) 
 	args = append(args, "wait-for-device", "shell")
 	args = append(args, commands...)
 
-	cmd := model.cmdFactory.Create(model.binPth, args, nil)
+	cmd := model.cmdFactory.Create(model.binPth, args, commandOptions)
 	return cmd
 }
 
 // KillServerCmd returns a command that kills the ADB server if it is running.
 // The next ADB command will automatically start the server.
-func (model Model) KillServerCmd() command.Command {
-	cmd := model.cmdFactory.Create(model.binPth, []string{"kill-server"}, &command.Opts{
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
-	})
+func (model Model) KillServerCmd(commandOptions *command.Opts) command.Command {
+	cmd := model.cmdFactory.Create(model.binPth, []string{"kill-server"}, commandOptions)
 	return cmd
 }
