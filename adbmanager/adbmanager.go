@@ -91,3 +91,24 @@ func (model Model) RunInstrumentedTestsCmd(
 	cmd := model.cmdFactory.Create(model.binPth, args, commandOptions)
 	return cmd
 }
+
+// WaitForDeviceThenShellCmd returns a command that first waits for a device to come online, then executes the provided
+// command(s) on the device shell
+func (model Model) WaitForDeviceThenShellCmd(serial string, commandOptions *command.Opts, commands ...string) command.Command {
+	var args []string
+	if serial != "" {
+		args = append(args, "-s", serial)
+	}
+	args = append(args, "wait-for-device", "shell")
+	args = append(args, commands...)
+
+	cmd := model.cmdFactory.Create(model.binPth, args, commandOptions)
+	return cmd
+}
+
+// KillServerCmd returns a command that kills the ADB server if it is running.
+// The next ADB command will automatically start the server.
+func (model Model) KillServerCmd(commandOptions *command.Opts) command.Command {
+	cmd := model.cmdFactory.Create(model.binPth, []string{"kill-server"}, commandOptions)
+	return cmd
+}
