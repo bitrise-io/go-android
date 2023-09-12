@@ -10,6 +10,17 @@ import (
 	"github.com/lwithers/minijks/jks"
 )
 
+type KeyStoreDetails struct {
+	FirstAndLastName   string
+	OrganizationalUnit string
+	Organization       string
+	CityOrLocality     string
+	StateOrProvince    string
+	CountryCode        string
+	ValidFrom          string
+	ValidUntil         string
+}
+
 type KeyStore struct {
 	KeyStoreDetails
 }
@@ -60,17 +71,6 @@ func parseJKSKeystore(content []byte, password, privateKeyAlias, privateKeyPassw
 	certificate := ks.Keypairs[0].CertChain[0]
 	details := parseCertificate(certificate.Cert)
 	return &KeyStore{details}, nil
-}
-
-type KeyStoreDetails struct {
-	FirstAndLastName   string
-	OrganizationalUnit string
-	Organization       string
-	CityOrLocality     string
-	StateOrProvince    string
-	CountryCode        string
-	ValidFrom          string
-	ValidUntil         string
 }
 
 func parsePKCS12Keystore(content []byte, password, privateKeyAlias, privateKeyPassword string) (*KeyStore, error) {
