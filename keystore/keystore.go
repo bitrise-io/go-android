@@ -2,6 +2,7 @@ package keystore
 
 import (
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -10,7 +11,7 @@ import (
 	"github.com/lwithers/minijks/jks"
 )
 
-type KeyStoreDetails struct {
+type Details struct {
 	FirstAndLastName   string
 	OrganizationalUnit string
 	Organization       string
@@ -22,10 +23,14 @@ type KeyStoreDetails struct {
 }
 
 type KeyStore struct {
-	KeyStoreDetails
+	Details
 }
 
-func Open(pth string, password string, privateKeyAlias, privateKeyPassword string) (*KeyStore, error) {
+var IncorrectAliasError = errors.New("incorrect key alias")
+var IncorrectKeystorePasswordError = errors.New("incorrect keystore password")
+var IncorrectKeyPasswordError = errors.New("incorrect key password")
+
+func Open(pth string, password string, alias, keyPassword string) (*KeyStore, error) {
 	f, err := os.Open(pth)
 	if err != nil {
 		return nil, err
@@ -43,13 +48,13 @@ func Open(pth string, password string, privateKeyAlias, privateKeyPassword strin
 	}
 
 	// a keystore is either a PKCS12 type keystore
-	keystore, err := parsePKCS12Keystore(b, password, privateKeyAlias, privateKeyPassword)
+	keystore, err := parsePKCS12Keystore(b, password, alias, keyPassword)
 	if err != nil && !strings.Contains(err.Error(), "pkcs12: error reading P12 data: asn1: structure error: length too large") {
 		return nil, err
 	}
 	// or a JKS type keystore (might pkcs8)
 	if keystore == nil {
-		keystore, err = parseJKSKeystore(b, password, privateKeyAlias, privateKeyPassword)
+		keystore, err = parseJKSKeystore(b, password, alias, keyPassword)
 		if err != nil {
 			return nil, err
 		}
@@ -58,34 +63,74 @@ func Open(pth string, password string, privateKeyAlias, privateKeyPassword strin
 	return keystore, nil
 }
 
-func parseJKSKeystore(content []byte, password, privateKeyAlias, privateKeyPassword string) (*KeyStore, error) {
+func parseJKSKeystore(content []byte, password, alias, keyPassword string) (*KeyStore, error) {
 	ks, err := jks.Parse(content, &jks.Options{
 		Password:         password,
 		SkipVerifyDigest: false,
-		KeyPasswords:     map[string]string{privateKeyAlias: privateKeyPassword},
+		KeyPasswords:     map[string]string{alias: keyPassword},
 	})
 	if err != nil {
+		if err.Error() == "digest mismatch" {
+			return nil, IncorrectKeystorePasswordError
+		}
 		return nil, err
 	}
 
-	certificate := ks.Keypairs[0].CertChain[0]
-	details := parseCertificate(certificate.Cert)
+	var keypair *jks.Keypair
+	for _, kp := range ks.Keypairs {
+		if kp.Alias == alias {
+			keypair = kp
+			break
+		}
+	}
+	if keypair == nil {
+		return nil, IncorrectAliasError
+	}
+	if keypair.PrivKeyErr != nil {
+		if keypair.PrivKeyErr.Error() == "invalid password" {
+			return nil, IncorrectKeyPasswordError
+		}
+		return nil, fmt.Errorf("failed to decrypt key: %s", keypair.PrivKeyErr)
+	}
+
+	var cert *x509.Certificate
+	if len(keypair.CertChain) > 0 {
+		cert = keypair.CertChain[0].Cert
+	}
+	if cert == nil {
+		return nil, fmt.Errorf("certificate not found")
+	}
+
+	details := parseCertificate(cert)
 	return &KeyStore{details}, nil
 }
 
-func parsePKCS12Keystore(content []byte, password, privateKeyAlias, privateKeyPassword string) (*KeyStore, error) {
-	_, certificate, err := pkcs12.DecodeKeystore(content, password, privateKeyAlias, privateKeyPassword)
+func parsePKCS12Keystore(content []byte, password, alias, keyPassword string) (*KeyStore, error) {
+	_, cert, err := pkcs12.DecodeKeystore(content, password, alias, keyPassword)
 	if err != nil {
-		return nil, err
+		switch err {
+		case pkcs12.IncorrectKeystorePasswordError:
+			return nil, IncorrectKeystorePasswordError
+		case pkcs12.IncorrectAliasError:
+			return nil, IncorrectAliasError
+		case pkcs12.IncorrectKeyPasswordError:
+			return nil, IncorrectKeyPasswordError
+		default:
+			return nil, err
+		}
 	}
 
-	details := parseCertificate(certificate)
+	if cert == nil {
+		return nil, fmt.Errorf("certificate not found")
+	}
+
+	details := parseCertificate(cert)
 	return &KeyStore{details}, nil
 }
 
-func parseCertificate(certificate *x509.Certificate) KeyStoreDetails {
+func parseCertificate(certificate *x509.Certificate) Details {
 	issuer := certificate.Issuer
-	details := KeyStoreDetails{}
+	details := Details{}
 
 	details.FirstAndLastName = issuer.CommonName
 
