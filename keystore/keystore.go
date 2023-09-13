@@ -26,9 +26,11 @@ type KeyStore struct {
 	Details
 }
 
-var IncorrectAliasError = errors.New("incorrect key alias")
-var IncorrectKeystorePasswordError = errors.New("incorrect keystore password")
-var IncorrectKeyPasswordError = errors.New("incorrect key password")
+var (
+	IncorrectAliasError            = errors.New("incorrect key alias")
+	IncorrectKeystorePasswordError = errors.New("incorrect keystore password")
+	IncorrectKeyPasswordError      = errors.New("incorrect key password")
+)
 
 func Open(pth string, password string, alias, keyPassword string) (*KeyStore, error) {
 	f, err := os.Open(pth)
