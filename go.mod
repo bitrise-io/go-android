@@ -5,7 +5,7 @@ go 1.16
 // TODO: use github.com/bitrise-io/go-pkcs12@decode-keystore
 
 require (
-	github.com/bitrise-io/go-pkcs12 v0.0.0-20230912082715-c4f997b790c0
+	github.com/bitrise-io/go-pkcs12 v0.0.0-20230913075027-cbe90f04f99a
 	github.com/bitrise-io/go-steputils v1.0.2
 	github.com/bitrise-io/go-utils v1.0.2
 	github.com/bitrise-io/go-utils/v2 v2.0.0-alpha.7

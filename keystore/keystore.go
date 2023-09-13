@@ -52,7 +52,7 @@ func Open(pth string, password string, alias, keyPassword string) (*KeyStore, er
 	if err != nil && !strings.Contains(err.Error(), "pkcs12: error reading P12 data: asn1: structure error: length too large") {
 		return nil, err
 	}
-	// or a JKS type keystore (might pkcs8)
+	// or a JKS type keystore
 	if keystore == nil {
 		keystore, err = parseJKSKeystore(b, password, alias, keyPassword)
 		if err != nil {
