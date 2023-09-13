@@ -2,8 +2,6 @@ module github.com/bitrise-io/go-android/v2
 
 go 1.16
 
-// TODO: use github.com/bitrise-io/go-pkcs12@decode-keystore
-
 require (
 	github.com/bitrise-io/go-pkcs12 v0.0.0-20230913075027-cbe90f04f99a
 	github.com/bitrise-io/go-steputils v1.0.2
