@@ -1,13 +1,16 @@
 package keystore
 
 import (
+	"io"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
-func TestOpen(t *testing.T) {
+func TestParse(t *testing.T) {
 	tests := []struct {
 		name               string
 		pth                string
@@ -15,6 +18,7 @@ func TestOpen(t *testing.T) {
 		privateKeyAlias    string
 		privateKeyPassword string
 		want               *KeyStore
+		wantError          string
 	}{
 		{
 			name:               "PKCS12 keystore test",
@@ -54,17 +58,42 @@ func TestOpen(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:               "Invalid file",
+			pth:                filepath.Join("testdata", "empty_file"),
+			password:           "keystore",
+			privateKeyAlias:    "mykey",
+			privateKeyPassword: "keystore",
+			wantError:          "failed to decode keystore:",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := Open(tt.pth, tt.password, tt.privateKeyAlias, tt.privateKeyPassword)
+			f, err := os.Open(tt.pth)
 			require.NoError(t, err)
-			require.Equal(t, tt.want, got)
+			defer func() {
+				err := f.Close()
+				require.NoError(t, err)
+			}()
+
+			b, err := io.ReadAll(f)
+			require.NoError(t, err)
+
+			parser := NewDefaultParser()
+			got, err := parser.Parse(b, tt.password, tt.privateKeyAlias, tt.privateKeyPassword)
+			if tt.wantError != "" {
+				require.Error(t, err)
+				require.True(t, strings.Contains(err.Error(), tt.wantError))
+				require.Nil(t, got)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.want, got)
+			}
 		})
 	}
 }
 
-func TestOpenErrors(t *testing.T) {
+func TestIncorrectKeystoreCredentials(t *testing.T) {
 	tests := []struct {
 		name               string
 		pth                string
@@ -124,9 +153,70 @@ func TestOpenErrors(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := Open(tt.pth, tt.password, tt.privateKeyAlias, tt.privateKeyPassword)
+			f, err := os.Open(tt.pth)
+			require.NoError(t, err)
+			defer func() {
+				err := f.Close()
+				require.NoError(t, err)
+			}()
+
+			b, err := io.ReadAll(f)
+			require.NoError(t, err)
+
+			parser := NewDefaultParser()
+			got, err := parser.Parse(b, tt.password, tt.privateKeyAlias, tt.privateKeyPassword)
 			require.EqualError(t, err, tt.wantError)
 			require.Nil(t, got)
+		})
+	}
+}
+
+func TestIsInvalidCredentialsError(t *testing.T) {
+	tests := []struct {
+		name               string
+		decoder            Decoder
+		pth                string
+		password           string
+		privateKeyAlias    string
+		privateKeyPassword string
+		wantError          string
+	}{
+		{
+			name:               "PKCS12 keystore, JKS decoder",
+			decoder:            JKSKeystoreDecoder{},
+			pth:                filepath.Join("testdata", "pkcs12_type_keystore.jks"),
+			password:           "storepass",
+			privateKeyAlias:    "key0",
+			privateKeyPassword: "keypass",
+			wantError:          IncorrectKeystorePasswordError.Error(),
+		},
+		{
+			name:               "JKS keystore, PKCS12 decoder",
+			decoder:            PKCS12KeystoreDecoder{},
+			pth:                filepath.Join("testdata", "jks_type_keystore.keystore"),
+			password:           "keystore",
+			privateKeyAlias:    "mykey",
+			privateKeyPassword: "keystore",
+			wantError:          IncorrectAliasError.Error(),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f, err := os.Open(tt.pth)
+			require.NoError(t, err)
+			defer func() {
+				err := f.Close()
+				require.NoError(t, err)
+			}()
+
+			b, err := io.ReadAll(f)
+			require.NoError(t, err)
+
+			_, _, err = tt.decoder.Decode(b, tt.password, tt.privateKeyAlias, tt.privateKeyPassword)
+			require.Error(t, err)
+
+			wrongType := tt.decoder.IsInvalidCredentialsError(err)
+			require.False(t, wrongType)
 		})
 	}
 }
