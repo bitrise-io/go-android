@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-type Details struct {
+type CertificateInformation struct {
 	FirstAndLastName   string
 	OrganizationalUnit string
 	Organization       string
@@ -15,10 +15,6 @@ type Details struct {
 	CountryCode        string
 	ValidFrom          string
 	ValidUntil         string
-}
-
-type KeyStore struct {
-	Details
 }
 
 var (
@@ -32,19 +28,19 @@ type Decoder interface {
 	IsInvalidCredentialsError(err error) bool
 }
 
-type Parser struct {
+type Reader struct {
 	decoders []Decoder
 }
 
-func NewParser(decoders []Decoder) Parser {
-	return Parser{decoders: decoders}
+func NewReader(decoders []Decoder) Reader {
+	return Reader{decoders: decoders}
 }
 
-func NewDefaultParser() Parser {
-	return NewParser([]Decoder{PKCS12KeystoreDecoder{}, JKSKeystoreDecoder{}})
+func NewDefaultReader() Reader {
+	return NewReader([]Decoder{PKCS12KeystoreDecoder{}, JKSKeystoreDecoder{}})
 }
 
-func (p Parser) Parse(data []byte, password, alias, keyPassword string) (*KeyStore, error) {
+func (p Reader) ReadCertificateInformation(data []byte, password, alias, keyPassword string) (*CertificateInformation, error) {
 	var cert *x509.Certificate
 	var decodeErrs []error
 
@@ -73,40 +69,40 @@ func (p Parser) Parse(data []byte, password, alias, keyPassword string) (*KeySto
 		return nil, fmt.Errorf("failed to decode keystore:\n%s", decodeErrsStr)
 	}
 
-	details := parseCertificate(cert)
-	return &KeyStore{details}, nil
+	certInfo := parseCertificate(cert)
+
+	return &certInfo, nil
 
 }
 
-func parseCertificate(certificate *x509.Certificate) Details {
-	issuer := certificate.Issuer
-	details := Details{}
+func parseCertificate(certificate *x509.Certificate) CertificateInformation {
+	certInfo := CertificateInformation{}
 
-	details.FirstAndLastName = issuer.CommonName
+	issuer := certificate.Issuer
+	certInfo.FirstAndLastName = issuer.CommonName
 
 	if len(issuer.OrganizationalUnit) > 0 {
-		details.OrganizationalUnit = issuer.OrganizationalUnit[0]
+		certInfo.OrganizationalUnit = issuer.OrganizationalUnit[0]
 	}
 
 	if len(issuer.Organization) > 0 {
-		details.Organization = issuer.Organization[0]
+		certInfo.Organization = issuer.Organization[0]
 	}
 
 	if len(issuer.Locality) > 0 {
-		details.CityOrLocality = issuer.Locality[0]
+		certInfo.CityOrLocality = issuer.Locality[0]
 	}
 
 	if len(issuer.Province) > 0 {
-		details.StateOrProvince = issuer.Province[0]
+		certInfo.StateOrProvince = issuer.Province[0]
 	}
 
 	if len(issuer.Country) > 0 {
-		details.CountryCode = issuer.Country[0]
+		certInfo.CountryCode = issuer.Country[0]
 	}
 
-	details.ValidFrom = certificate.NotBefore.String()
+	certInfo.ValidFrom = certificate.NotBefore.String()
+	certInfo.ValidUntil = certificate.NotAfter.String()
 
-	details.ValidUntil = certificate.NotAfter.String()
-
-	return details
+	return certInfo
 }

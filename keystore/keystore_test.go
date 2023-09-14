@@ -17,7 +17,7 @@ func TestParse(t *testing.T) {
 		password           string
 		privateKeyAlias    string
 		privateKeyPassword string
-		want               *KeyStore
+		want               *CertificateInformation
 		wantError          string
 	}{
 		{
@@ -26,17 +26,15 @@ func TestParse(t *testing.T) {
 			password:           "storepass",
 			privateKeyAlias:    "key0",
 			privateKeyPassword: "keypass",
-			want: &KeyStore{
-				Details{
-					FirstAndLastName:   "Bitrise Bot",
-					OrganizationalUnit: "",
-					Organization:       "",
-					CityOrLocality:     "",
-					StateOrProvince:    "",
-					CountryCode:        "",
-					ValidFrom:          "2023-09-11 13:18:53 +0000 UTC",
-					ValidUntil:         "2048-09-04 13:18:53 +0000 UTC",
-				},
+			want: &CertificateInformation{
+				FirstAndLastName:   "Bitrise Bot",
+				OrganizationalUnit: "",
+				Organization:       "",
+				CityOrLocality:     "",
+				StateOrProvince:    "",
+				CountryCode:        "",
+				ValidFrom:          "2023-09-11 13:18:53 +0000 UTC",
+				ValidUntil:         "2048-09-04 13:18:53 +0000 UTC",
 			},
 		},
 		{
@@ -45,17 +43,15 @@ func TestParse(t *testing.T) {
 			password:           "keystore",
 			privateKeyAlias:    "mykey",
 			privateKeyPassword: "keystore",
-			want: &KeyStore{
-				Details{
-					FirstAndLastName:   "asdf",
-					OrganizationalUnit: "asdf",
-					Organization:       "asdf",
-					CityOrLocality:     "asdf",
-					StateOrProvince:    "asdf",
-					CountryCode:        "as",
-					ValidFrom:          "2016-07-14 10:10:41 +0000 UTC",
-					ValidUntil:         "2043-11-30 10:10:41 +0000 UTC",
-				},
+			want: &CertificateInformation{
+				FirstAndLastName:   "asdf",
+				OrganizationalUnit: "asdf",
+				Organization:       "asdf",
+				CityOrLocality:     "asdf",
+				StateOrProvince:    "asdf",
+				CountryCode:        "as",
+				ValidFrom:          "2016-07-14 10:10:41 +0000 UTC",
+				ValidUntil:         "2043-11-30 10:10:41 +0000 UTC",
 			},
 		},
 		{
@@ -79,8 +75,8 @@ func TestParse(t *testing.T) {
 			b, err := io.ReadAll(f)
 			require.NoError(t, err)
 
-			parser := NewDefaultParser()
-			got, err := parser.Parse(b, tt.password, tt.privateKeyAlias, tt.privateKeyPassword)
+			parser := NewDefaultReader()
+			got, err := parser.ReadCertificateInformation(b, tt.password, tt.privateKeyAlias, tt.privateKeyPassword)
 			if tt.wantError != "" {
 				require.Error(t, err)
 				require.True(t, strings.Contains(err.Error(), tt.wantError))
@@ -163,8 +159,8 @@ func TestIncorrectKeystoreCredentials(t *testing.T) {
 			b, err := io.ReadAll(f)
 			require.NoError(t, err)
 
-			parser := NewDefaultParser()
-			got, err := parser.Parse(b, tt.password, tt.privateKeyAlias, tt.privateKeyPassword)
+			parser := NewDefaultReader()
+			got, err := parser.ReadCertificateInformation(b, tt.password, tt.privateKeyAlias, tt.privateKeyPassword)
 			require.EqualError(t, err, tt.wantError)
 			require.Nil(t, got)
 		})
