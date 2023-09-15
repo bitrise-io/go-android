@@ -2,6 +2,7 @@ package keystore
 
 import (
 	"crypto/x509"
+	"errors"
 	"fmt"
 
 	"github.com/lwithers/minijks/jks"
@@ -52,7 +53,7 @@ func (d JKSKeystoreDecoder) Decode(data []byte, password, alias, keyPassword str
 }
 
 func (d JKSKeystoreDecoder) IsInvalidCredentialsError(err error) bool {
-	return err == IncorrectKeystorePasswordError ||
-		err == IncorrectAliasError ||
-		err == IncorrectKeyPasswordError
+	return errors.Is(err, IncorrectKeystorePasswordError) ||
+		errors.Is(err, IncorrectAliasError) ||
+		errors.Is(err, IncorrectKeyPasswordError)
 }
