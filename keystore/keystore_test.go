@@ -22,7 +22,7 @@ func TestParse(t *testing.T) {
 	}{
 		{
 			name:               "PKCS12 keystore test",
-			pth:                filepath.Join("testdata", "pkcs12_type_keystore.jks"),
+			pth:                filepath.Join("testdata", "keystore.pkcs12"),
 			password:           "storepass",
 			privateKeyAlias:    "key0",
 			privateKeyPassword: "keypass",
@@ -39,7 +39,7 @@ func TestParse(t *testing.T) {
 		},
 		{
 			name:               "JKS keystore test",
-			pth:                filepath.Join("testdata", "jks_type_keystore.keystore"),
+			pth:                filepath.Join("testdata", "keystore.jks"),
 			password:           "keystore",
 			privateKeyAlias:    "mykey",
 			privateKeyPassword: "keystore",
@@ -52,6 +52,35 @@ func TestParse(t *testing.T) {
 				CountryCode:        "as",
 				ValidFrom:          "2016-07-14 10:10:41 +0000 UTC",
 				ValidUntil:         "2043-11-30 10:10:41 +0000 UTC",
+			},
+		},
+		{
+			name:               "PKCS12 Keystore with upper case letters in the alias",
+			pth:                filepath.Join("testdata", "upper_case_alias_keystore.pkcs12"),
+			password:           "keystore",
+			privateKeyAlias:    "MyKey",
+			privateKeyPassword: "keystore",
+			want: &CertificateInformation{
+				Organization: "Bitrise",
+				ValidFrom:    "2024-01-31 14:08:42 +0000 UTC",
+				ValidUntil:   "2049-01-24 14:08:42 +0000 UTC",
+			},
+		},
+		{
+			name:               "JKS Keystore with upper case letters in the alias",
+			pth:                filepath.Join("testdata", "upper_case_alias_keystore.jks"),
+			password:           "keystore",
+			privateKeyAlias:    "Alias0",
+			privateKeyPassword: "keystore",
+			want: &CertificateInformation{
+				FirstAndLastName:   "Unknown",
+				OrganizationalUnit: "Unknown",
+				Organization:       "Bitrise",
+				CityOrLocality:     "Unknown",
+				StateOrProvince:    "Unknown",
+				CountryCode:        "Unknown",
+				ValidFrom:          "2024-01-31 14:34:34 +0000 UTC",
+				ValidUntil:         "2051-06-18 14:34:34 +0000 UTC",
 			},
 		},
 		{
@@ -100,7 +129,7 @@ func TestIncorrectKeystoreCredentials(t *testing.T) {
 	}{
 		{
 			name:               "PKCS12 keystore test - incorrect password",
-			pth:                filepath.Join("testdata", "pkcs12_type_keystore.jks"),
+			pth:                filepath.Join("testdata", "keystore.pkcs12"),
 			password:           "incorrect-password",
 			privateKeyAlias:    "key0",
 			privateKeyPassword: "keypass",
@@ -108,7 +137,7 @@ func TestIncorrectKeystoreCredentials(t *testing.T) {
 		},
 		{
 			name:               "PKCS12 keystore test - incorrect alias",
-			pth:                filepath.Join("testdata", "pkcs12_type_keystore.jks"),
+			pth:                filepath.Join("testdata", "keystore.pkcs12"),
 			password:           "storepass",
 			privateKeyAlias:    "incorrect-alias",
 			privateKeyPassword: "keypass",
@@ -116,7 +145,7 @@ func TestIncorrectKeystoreCredentials(t *testing.T) {
 		},
 		{
 			name:               "PKCS12 keystore test - incorrect key password",
-			pth:                filepath.Join("testdata", "pkcs12_type_keystore.jks"),
+			pth:                filepath.Join("testdata", "keystore.pkcs12"),
 			password:           "storepass",
 			privateKeyAlias:    "key0",
 			privateKeyPassword: "incorrect-keypassword",
@@ -124,7 +153,7 @@ func TestIncorrectKeystoreCredentials(t *testing.T) {
 		},
 		{
 			name:               "JKS keystore test - incorrect password",
-			pth:                filepath.Join("testdata", "jks_type_keystore.keystore"),
+			pth:                filepath.Join("testdata", "keystore.jks"),
 			password:           "incorrect-password",
 			privateKeyAlias:    "mykey",
 			privateKeyPassword: "keystore",
@@ -132,7 +161,7 @@ func TestIncorrectKeystoreCredentials(t *testing.T) {
 		},
 		{
 			name:               "JKS keystore test - incorrect alias",
-			pth:                filepath.Join("testdata", "jks_type_keystore.keystore"),
+			pth:                filepath.Join("testdata", "keystore.jks"),
 			password:           "keystore",
 			privateKeyAlias:    "incorrect-alias",
 			privateKeyPassword: "keystore",
@@ -140,7 +169,7 @@ func TestIncorrectKeystoreCredentials(t *testing.T) {
 		},
 		{
 			name:               "JKS keystore test - incorrect key password",
-			pth:                filepath.Join("testdata", "jks_type_keystore.keystore"),
+			pth:                filepath.Join("testdata", "keystore.jks"),
 			password:           "keystore",
 			privateKeyAlias:    "mykey",
 			privateKeyPassword: "incorrect-keypassword",
@@ -180,7 +209,7 @@ func TestIsInvalidCredentialsError(t *testing.T) {
 		{
 			name:               "PKCS12 keystore, JKS decoder",
 			decoder:            JKSKeystoreDecoder{},
-			pth:                filepath.Join("testdata", "pkcs12_type_keystore.jks"),
+			pth:                filepath.Join("testdata", "keystore.pkcs12"),
 			password:           "storepass",
 			privateKeyAlias:    "key0",
 			privateKeyPassword: "keypass",
@@ -189,7 +218,7 @@ func TestIsInvalidCredentialsError(t *testing.T) {
 		{
 			name:               "JKS keystore, PKCS12 decoder",
 			decoder:            PKCS12KeystoreDecoder{},
-			pth:                filepath.Join("testdata", "jks_type_keystore.keystore"),
+			pth:                filepath.Join("testdata", "keystore.jks"),
 			password:           "keystore",
 			privateKeyAlias:    "mykey",
 			privateKeyPassword: "keystore",

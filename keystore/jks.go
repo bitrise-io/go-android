@@ -4,6 +4,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/lwithers/minijks/jks"
 )
@@ -12,6 +13,7 @@ type JKSKeystoreDecoder struct {
 }
 
 func (d JKSKeystoreDecoder) Decode(data []byte, password, alias, keyPassword string) (privateKey interface{}, certificate *x509.Certificate, err error) {
+	alias = strings.ToLower(alias)
 	ks, err := jks.Parse(data, &jks.Options{
 		Password:         password,
 		SkipVerifyDigest: false,
