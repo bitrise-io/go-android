@@ -4,6 +4,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/bitrise-io/go-pkcs12"
 )
@@ -12,6 +13,7 @@ type PKCS12KeystoreDecoder struct {
 }
 
 func (d PKCS12KeystoreDecoder) Decode(data []byte, password, alias, keyPassword string) (privateKey interface{}, certificate *x509.Certificate, err error) {
+	alias = strings.ToLower(alias)
 	key, cert, err := pkcs12.DecodeKeystore(data, password, alias, keyPassword)
 	if err != nil {
 		return nil, nil, keystoreErrorFromPKCS12Error(err)
