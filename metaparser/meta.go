@@ -10,4 +10,5 @@ type ArtifactMetadata struct {
 	BuildType      string
 	SignedBy       string
 	Warnings       []string
+	androidartifact.Artifact
 }
