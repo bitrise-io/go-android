@@ -36,7 +36,7 @@ func Test_GetAPKInfo(t *testing.T) {
 		t.Fatalf("GetAPKInfo() error = %v", err)
 	}
 
-	want := ApkInfo{
+	want := Info{
 		AppName:           "My Application",
 		PackageName:       "com.example.birmachera.myapplication",
 		VersionCode:       "1",

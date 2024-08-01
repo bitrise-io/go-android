@@ -43,7 +43,7 @@ func Test_GetAABInfo(t *testing.T) {
 		t.Fatalf("GetAABInfo() error = %v", err)
 	}
 
-	want := AabInfo{
+	want := Info{
 		AppName:           "sample-apps-android-simple",
 		PackageName:       "com.bitrise_io.sample_apps_android_simple",
 		VersionCode:       "189",
