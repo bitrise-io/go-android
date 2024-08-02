@@ -1,4 +1,4 @@
-package parser
+package metaparser
 
 import "github.com/bitrise-io/go-android/v2/metaparser/androidartifact"
 
