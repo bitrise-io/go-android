@@ -7,6 +7,12 @@ import (
 	"github.com/bitrise-io/go-utils/pretty"
 )
 
+type testLogger struct{}
+
+func (l *testLogger) Warnf(format string, args ...interface{})              {}
+func (l *testLogger) AABParseWarnf(tag, format string, args ...interface{}) {}
+func (l *testLogger) APKParseWarnf(tag, format string, args ...interface{}) {}
+
 func TestParseArtifactPath(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -138,6 +144,7 @@ func Test_parseArtifactInfo(t *testing.T) {
 }
 
 func Test_mapBuildArtifacts(t *testing.T) {
+	tLogger := &testLogger{}
 	tests := []struct {
 		name string
 		pths []string
@@ -235,7 +242,7 @@ func Test_mapBuildArtifacts(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := mapBuildArtifacts(tt.pths)
+			got := mapBuildArtifacts(tLogger, tt.pths)
 
 			if len(tt.want) != len(got) {
 				t.Errorf("%v does not equal %v", pretty.Object(tt.want), pretty.Object(got))
@@ -269,6 +276,8 @@ func Test_mapBuildArtifacts(t *testing.T) {
 }
 
 func TestCreateSplitArtifactMeta(t *testing.T) {
+	tLogger := &testLogger{}
+
 	tests := []struct {
 		name    string
 		pth     string
@@ -380,7 +389,7 @@ func TestCreateSplitArtifactMeta(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := CreateSplitArtifactMeta(tt.pth, tt.pths)
+			got, err := CreateSplitArtifactMeta(tLogger, tt.pth, tt.pths)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateSplitArtifactMeta() error = %v, wantErr %v", err, tt.wantErr)
 				return
