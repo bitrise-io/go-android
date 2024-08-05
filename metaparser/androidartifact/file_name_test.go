@@ -7,12 +7,6 @@ import (
 	"github.com/bitrise-io/go-utils/pretty"
 )
 
-type testLogger struct{}
-
-func (l *testLogger) Warnf(format string, args ...interface{})              {}
-func (l *testLogger) AABParseWarnf(tag, format string, args ...interface{}) {}
-func (l *testLogger) APKParseWarnf(tag, format string, args ...interface{}) {}
-
 func TestParseArtifactPath(t *testing.T) {
 	tests := []struct {
 		name     string

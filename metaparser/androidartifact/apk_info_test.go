@@ -10,7 +10,8 @@ import (
 	"github.com/bitrise-io/go-utils/log"
 )
 
-func Test_GetAPKInfo(t *testing.T) {
+func Test_GetAPKInfoWithFallback(t *testing.T) {
+	tLogger := &testLogger{}
 	tmpDir, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("setup: failed to create temp dir, error: %s", err)
@@ -31,7 +32,7 @@ func Test_GetAPKInfo(t *testing.T) {
 	}
 
 	apkPath := path.Join(tmpDir, "apks", "app-debug.apk")
-	got, err := GetAPKInfo(apkPath)
+	got, err := GetAPKInfoWithFallback(tLogger, apkPath)
 	if err != nil {
 		t.Fatalf("GetAPKInfo() error = %v", err)
 	}
