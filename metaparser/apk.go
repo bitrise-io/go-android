@@ -5,15 +5,15 @@ import (
 )
 
 // ParseAPKData ...
-func (m *metaparser) ParseAPKData(pth string) (*ArtifactMetadata, error) {
-	apkInfo, err := androidartifact.GetAPKInfoWithFallback(m.Logger, pth)
+func (m *Parser) ParseAPKData(pth string) (*ArtifactMetadata, error) {
+	apkInfo, err := androidartifact.GetAPKInfoWithFallback(m.logger, pth)
 	if err != nil {
 		return nil, err
 	}
 
-	fileSize, err := m.FileManager.FileSizeInBytes(pth)
+	fileSize, err := m.fileManager.FileSizeInBytes(pth)
 	if err != nil {
-		m.Logger.Warnf("Failed to get apk size, error: %s", err)
+		m.logger.Warnf("Failed to get apk size, error: %s", err)
 	}
 
 	info := androidartifact.ParseArtifactPath(pth)

@@ -6,24 +6,24 @@ import (
 )
 
 // ParseAABData ...
-func (m *metaparser) ParseAABData(pth string) (*ArtifactMetadata, error) {
-	aabInfo, err := androidartifact.GetAABInfo(m.BundletoolPath, pth)
+func (m *Parser) ParseAABData(pth string) (*ArtifactMetadata, error) {
+	aabInfo, err := androidartifact.GetAABInfo(m.bundletoolPath, pth)
 	if err != nil {
-		m.Logger.Warnf("Failed to parse AAB info: %s", err)
-		m.Logger.AABParseWarnf("aab-parse", "aabparser package failed to parse AAB, error: %s", err)
+		m.logger.Warnf("Failed to parse AAB info: %s", err)
+		m.logger.AABParseWarnf("aab-parse", "aabparser package failed to parse AAB, error: %s", err)
 		return nil, err
 	}
 
-	fileSize, err := m.FileManager.FileSizeInBytes(pth)
+	fileSize, err := m.fileManager.FileSizeInBytes(pth)
 	if err != nil {
-		m.Logger.Warnf("Failed to get apk size, error: %s", err)
+		m.logger.Warnf("Failed to get apk size, error: %s", err)
 	}
 
 	info := androidartifact.ParseArtifactPath(pth)
 
 	signature, err := androidsignature.Read(pth)
 	if err != nil {
-		m.Logger.Warnf("Failed to read signature: %s", err)
+		m.logger.Warnf("Failed to read signature: %s", err)
 	}
 
 	return &ArtifactMetadata{

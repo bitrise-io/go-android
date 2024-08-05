@@ -16,22 +16,17 @@ type ArtifactMetadata struct {
 	androidartifact.Artifact
 }
 
-type MetaParser interface {
-	ParseAABData(pth string) (*ArtifactMetadata, error)
-	ParseAPKData(pth string) (*ArtifactMetadata, error)
+type Parser struct {
+	logger         androidartifact.Logger
+	bundletoolPath bundletool.Path
+	fileManager    fileutil.FileManager
 }
 
-type metaparser struct {
-	Logger         androidartifact.Logger
-	BundletoolPath bundletool.Path
-	FileManager    fileutil.FileManager
-}
-
-// NewMetaParser ...
-func NewMetaParser(logger androidartifact.Logger, bundletoolPath bundletool.Path) MetaParser {
-	return &metaparser{
-		Logger:         logger,
-		BundletoolPath: bundletoolPath,
-		FileManager:    fileutil.NewFileManager(),
+// New ...
+func New(logger androidartifact.Logger, bundletoolPath bundletool.Path) *Parser {
+	return &Parser{
+		logger:         logger,
+		bundletoolPath: bundletoolPath,
+		fileManager:    fileutil.NewFileManager(),
 	}
 }
