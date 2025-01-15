@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"regexp"
 	"strings"
 
@@ -17,7 +18,8 @@ const (
 )
 
 var (
-	NotVerifiedError = errors.New("not verified")
+	NotVerifiedError      = errors.New("not verified")
+	NoSignatureFoundError = errors.New("no signature found")
 )
 
 // Read ...
@@ -27,47 +29,43 @@ func Read(path string) (string, error) {
 	return ReadAABSignature(path)
 }
 
-// ReadAABSignature ...
+// ReadAABSignature returns the signature of the provided AAB file.
+// If the AAB is not signed, it returns a NotVerifiedError.
 func ReadAABSignature(path string) (string, error) {
 	return getJarSignature(path)
 }
 
-// ReadAPKSignature ...
-func ReadAPKSignature(path string) (string, []error) {
-	var signature string
-	var errs []error
-	signature, err := getV4Signature(path)
-	if err != nil {
-		errs = append(errs, fmt.Errorf("v4 signature: %+v", err))
+// ReadAPKSignature returns the signature of the provided APK file.
+// If the APK is not signed, it returns a NotVerifiedError.
+func ReadAPKSignature(apkPath string) (string, error) {
+	idSigPath := apkPath + ".idsig"
+	if _, err := os.Stat(idSigPath); err == nil {
+		signature, err := getV4Signature(apkPath, idSigPath)
+		if err != nil && !errors.Is(err, NotVerifiedError) && !errors.Is(err, NoSignatureFoundError) {
+			return "", err
+		}
+		if signature != "" {
+			return signature, nil
+		}
+	}
+
+	signature, err := getV23Signature(apkPath)
+	if err != nil && !errors.Is(err, NotVerifiedError) && !errors.Is(err, NoSignatureFoundError) {
+		return "", err
 	}
 	if signature != "" {
-		return signature, errs
+		return signature, nil
 	}
 
-	signature, err = getV23Signature(path)
-	if err != nil {
-		errs = append(errs, fmt.Errorf("v2/v3 signature: %+v", err))
-	}
-	if signature != "" {
-		return signature, errs
-	}
-
-	signature, err = getJarSignature(path)
-	if err != nil {
-		errs = append(errs, fmt.Errorf("jar (v1) signature: %+v", err))
-	}
-
-	return signature, errs
+	return getJarSignature(apkPath)
 }
 
-func getV4Signature(path string) (string, error) {
-	idSigPath := path + ".idsig"
-
-	if _, err := os.Stat(idSigPath); errors.Is(err, os.ErrNotExist) {
-		return "", fmt.Errorf("failed to find the v4 signature file (*.idsig), error: %s", err)
+func getV4Signature(apkPath string, idsigPath string) (string, error) {
+	if _, err := os.Stat(idsigPath); err != nil {
+		return "", fmt.Errorf("failed to check if detached signature file (.idsig) exist: %s", err)
 	}
 
-	pathParams := []string{"-v4-signature-file", idSigPath, path}
+	pathParams := []string{"-v4-signature-file", idsigPath, apkPath}
 	return getV2PlusSignature(pathParams)
 }
 
@@ -93,34 +91,31 @@ func getV2PlusSignature(pathParams []string) (string, error) {
 	params := append([]string{"verify", "--print-certs", "-v"}, pathParams...)
 	apkSignerOutput, err := command.New(apkSignerPath, params...).RunAndReturnTrimmedCombinedOutput()
 	if err != nil {
-		if err.Error() == "exit status 1" {
-			regex := regexp.MustCompile(`DOES NOT VERIFY`)
-			sig := regex.FindString(apkSignerOutput)
-			if sig != "" {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			if strings.Contains(apkSignerOutput, `DOES NOT VERIFY`) {
 				return "", NotVerifiedError
 			}
 		}
 		return "", err
 	}
 
-	var signature string
-
-	if strings.Contains(apkSignerOutput, validV2PlusSignatureMessage) {
-		// The signature details appear in the output in the following format:
-		// Signer #1 certificate DN: C=Aa, ST=Bbbbb, L=Ccccc, O=Ddddd, OU=Eeeee, CN=Fffff
-		// Signer #1 certificate SHA-256 digest: <hash>
-		// Signer #1 certificate SHA-1 digest: <hash>
-		// Signer #1 certificate MD5 digest: <hash>
-		regex := regexp.MustCompile("Signer #1 certificate DN: (.*)")
-		res := regex.FindAllStringSubmatch(apkSignerOutput, 1)
-		if len(res) > 0 && len(res[0]) > 1 {
-			return res[0][1], nil
-		}
-	} else {
-		err = NotVerifiedError
+	if !strings.Contains(apkSignerOutput, validV2PlusSignatureMessage) {
+		return "", NotVerifiedError
 	}
 
-	return signature, err
+	// The signature details appear in the output in the following format:
+	// Signer #1 certificate DN: C=Aa, ST=Bbbbb, L=Ccccc, O=Ddddd, OU=Eeeee, CN=Fffff
+	// Signer #1 certificate SHA-256 digest: <hash>
+	// Signer #1 certificate SHA-1 digest: <hash>
+	// Signer #1 certificate MD5 digest: <hash>
+	regex := regexp.MustCompile("Signer #1 certificate DN: (.*)")
+	res := regex.FindAllStringSubmatch(apkSignerOutput, 1)
+	if len(res) > 0 && len(res[0]) > 1 {
+		return res[0][1], nil
+	}
+
+	return "", NoSignatureFoundError
 }
 
 func getJarSignature(path string) (string, error) {
@@ -130,20 +125,21 @@ func getJarSignature(path string) (string, error) {
 		return "", err
 	}
 
-	var signature string
-
-	if strings.Contains(output, validJarSignatureMessage) {
-		// The signature details appear in the output in the following format:
-		// - Signed by "C=Aa, ST=Bbbbb, L=Ccccc, O=Ddddd, OU=Eeeee, CN=Fffff"
-		regex := regexp.MustCompile(`- Signed by ".*"`)
-		sig := regex.FindString(output)
-		if sig != "" {
-			signature = strings.TrimPrefix(sig, "- Signed by \"")
-			signature = strings.TrimSuffix(signature, "\"")
-		}
-	} else {
-		err = NotVerifiedError
+	if !strings.Contains(output, validJarSignatureMessage) {
+		return "", NotVerifiedError
 	}
 
-	return signature, err
+	var signature string
+
+	// The signature details appear in the output in the following format:
+	// - Signed by "C=Aa, ST=Bbbbb, L=Ccccc, O=Ddddd, OU=Eeeee, CN=Fffff"
+	regex := regexp.MustCompile(`- Signed by ".*"`)
+	sig := regex.FindString(output)
+	if sig != "" {
+		signature = strings.TrimPrefix(sig, "- Signed by \"")
+		signature = strings.TrimSuffix(signature, "\"")
+		return signature, nil
+	}
+
+	return "", NoSignatureFoundError
 }
