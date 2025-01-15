@@ -28,7 +28,6 @@ func Test_ReadAABSignature(t *testing.T) {
 	tests := []struct {
 		name          string
 		apkPath       string
-		idsigPath     string
 		wantSignature string
 	}{
 		{

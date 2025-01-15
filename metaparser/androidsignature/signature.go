@@ -125,6 +125,9 @@ func getJarSignature(path string) (string, error) {
 		return "", err
 	}
 
+	// TODO: tmp debug log
+	fmt.Println(output)
+
 	if !strings.Contains(output, validJarSignatureMessage) {
 		return "", NotVerifiedError
 	}
