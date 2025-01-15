@@ -18,7 +18,8 @@ const (
 )
 
 var (
-	NotVerifiedError = errors.New("not verified")
+	NotVerifiedError      = errors.New("not verified")
+	NoSignatureFoundError = errors.New("no signature found")
 )
 
 // Read ...
@@ -36,11 +37,11 @@ func ReadAABSignature(path string) (string, error) {
 
 // ReadAPKSignature returns the signature of the provided APK file.
 // If the APK is not signed, it returns a NotVerifiedError.
-func ReadAPKSignature(apkPath string, idsigPath string) (string, error) {
-	var signature string
-	if idsigPath != "" {
-		signature, err := getV4Signature(apkPath, idsigPath)
-		if err != nil && !errors.Is(err, NotVerifiedError) {
+func ReadAPKSignature(apkPath string) (string, error) {
+	idSigPath := apkPath + ".idsig"
+	if _, err := os.Stat(idSigPath); err == nil {
+		signature, err := getV4Signature(apkPath, idSigPath)
+		if err != nil && !errors.Is(err, NotVerifiedError) && !errors.Is(err, NoSignatureFoundError) {
 			return "", err
 		}
 		if signature != "" {
@@ -49,22 +50,14 @@ func ReadAPKSignature(apkPath string, idsigPath string) (string, error) {
 	}
 
 	signature, err := getV23Signature(apkPath)
-	if err != nil && !errors.Is(err, NotVerifiedError) {
+	if err != nil && !errors.Is(err, NotVerifiedError) && !errors.Is(err, NoSignatureFoundError) {
 		return "", err
 	}
 	if signature != "" {
 		return signature, nil
 	}
 
-	signature, err = getJarSignature(apkPath)
-	if err != nil && !errors.Is(err, NotVerifiedError) {
-		return "", err
-	}
-	if signature != "" {
-		return signature, nil
-	}
-
-	return "", nil
+	return getJarSignature(apkPath)
 }
 
 func getV4Signature(apkPath string, idsigPath string) (string, error) {
@@ -122,7 +115,7 @@ func getV2PlusSignature(pathParams []string) (string, error) {
 		return res[0][1], nil
 	}
 
-	return "", nil
+	return "", NoSignatureFoundError
 }
 
 func getJarSignature(path string) (string, error) {
@@ -145,7 +138,8 @@ func getJarSignature(path string) (string, error) {
 	if sig != "" {
 		signature = strings.TrimPrefix(sig, "- Signed by \"")
 		signature = strings.TrimSuffix(signature, "\"")
+		return signature, nil
 	}
 
-	return signature, nil
+	return "", NoSignatureFoundError
 }

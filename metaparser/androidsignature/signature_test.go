@@ -41,7 +41,7 @@ func Test_ReadAABSignature(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			gotSignature, gotError := ReadAABSignature(tt.apkPath)
 			require.NoError(t, gotError)
-			require.Equal(t, gotSignature, tt.wantSignature)
+			require.Equal(t, tt.wantSignature, gotSignature)
 		})
 	}
 }
@@ -72,6 +72,11 @@ func Test_ReadASignature(t *testing.T) {
 			name:      "Unsigned APK",
 			apkPath:   path.Join(tmpDir, "apks", "app-release-unsigned.apk"),
 			wantError: NotVerifiedError.Error(),
+		},
+		{
+			name:          "Debug signed APK",
+			apkPath:       path.Join(tmpDir, "apks", "app-debug.apk"),
+			wantSignature: "C=US, O=Android, CN=Android Debug",
 		},
 		{
 			name:          "Reads V1 signature",
@@ -113,13 +118,13 @@ func Test_ReadASignature(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotSignature, gotError := ReadAPKSignature(tt.apkPath, tt.idsigPath)
+			gotSignature, gotError := ReadAPKSignature(tt.apkPath)
 			if tt.wantError != "" {
 				require.EqualError(t, gotError, tt.wantError)
 			} else {
 				require.NoError(t, gotError)
 			}
-			require.Equal(t, gotSignature, tt.wantSignature)
+			require.Equal(t, tt.wantSignature, gotSignature)
 		})
 	}
 }

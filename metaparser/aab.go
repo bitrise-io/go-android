@@ -1,8 +1,6 @@
 package metaparser
 
 import (
-	"errors"
-
 	"github.com/bitrise-io/go-android/v2/metaparser/androidartifact"
 	"github.com/bitrise-io/go-android/v2/metaparser/androidsignature"
 )
@@ -24,8 +22,8 @@ func (m *Parser) ParseAABData(pth string) (*ArtifactMetadata, error) {
 	info := androidartifact.ParseArtifactPath(pth)
 
 	signature, err := androidsignature.ReadAABSignature(pth)
-	if err != nil && !errors.Is(err, androidsignature.NotVerifiedError) {
-		m.logger.Warnf("Failed to read signature of `%s`: %s", pth, err)
+	if err != nil {
+		m.logger.Warnf("Failed to get signature of `%s`: %s", pth, err)
 	}
 
 	return &ArtifactMetadata{
