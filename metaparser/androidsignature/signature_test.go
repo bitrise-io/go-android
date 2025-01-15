@@ -1,70 +1,125 @@
 package androidsignature
 
 import (
-	"errors"
 	"os"
 	"path"
-	"strings"
 	"testing"
 
-	"github.com/kr/pretty"
+	"github.com/stretchr/testify/require"
 
 	"github.com/bitrise-io/go-utils/command/git"
-	"github.com/bitrise-io/go-utils/log"
 )
 
-func Test_ReadAPKSignature(t *testing.T) {
+func Test_ReadAABSignature(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "")
-	if err != nil {
-		t.Fatalf("setup: failed to create temp dir, error: %s", err)
-	}
+	require.NoError(t, err)
 
 	defer func() {
 		if err := os.RemoveAll(tmpDir); err != nil {
-			log.Warnf("failed to remove temp dir, error: %s", err)
+			t.Logf("failed to remove temp dir, error: %s", err)
 		}
 	}()
 
 	gitCommand, err := git.New(tmpDir)
-	if err != nil {
-		t.Fatalf("setup: failed to create git project, error: %s", err)
-	}
-	if err := gitCommand.Clone("https://github.com/bitrise-io/sample-artifacts.git").Run(); err != nil {
-		t.Fatalf("setup: failed to clone test artifact repo, error: %s", err)
-	}
+	require.NoError(t, err)
+	err = gitCommand.Clone("https://github.com/bitrise-io/sample-artifacts.git").Run()
+	require.NoError(t, err)
 
 	tests := []struct {
-		name            string
-		path            string
-		wantSignature   string
-		wantErrorsCount int
+		name          string
+		apkPath       string
+		idsigPath     string
+		wantSignature string
 	}{
 		{
-			name:            "Return signature by jarsigner",
-			path:            path.Join(tmpDir, "apks", "app-release-v1-signature.apk"),
-			wantSignature:   "O=Bitrise",
-			wantErrorsCount: 2,
+			name:          "Reads AAB signature",
+			apkPath:       path.Join(tmpDir, "app-bitrise-signed.aab"),
+			wantSignature: "CN=Bitrise",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotSignature, gotErrors := ReadAPKSignature(tt.path)
-			if diffs := pretty.Diff(gotSignature, tt.wantSignature); len(diffs) > 0 {
-				t.Errorf(
-					"\nReadAPKSignature()\n - got:\t\t%+v\n - want:\t%+v\n diff:\n\t%s",
-					gotSignature,
-					tt.wantSignature,
-					strings.Join(diffs, "\n"),
-				)
+			gotSignature, gotError := ReadAABSignature(tt.apkPath)
+			require.NoError(t, gotError)
+			require.Equal(t, gotSignature, tt.wantSignature)
+		})
+	}
+}
+
+func Test_ReadASignature(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "")
+	require.NoError(t, err)
+
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Logf("failed to remove temp dir, error: %s", err)
+		}
+	}()
+
+	gitCommand, err := git.New(tmpDir)
+	require.NoError(t, err)
+	err = gitCommand.Clone("https://github.com/bitrise-io/sample-artifacts.git", "-b", "godrei-patch-1").Run()
+	require.NoError(t, err)
+
+	tests := []struct {
+		name          string
+		apkPath       string
+		idsigPath     string
+		wantSignature string
+		wantError     string
+	}{
+		{
+			name:      "Unsigned APK",
+			apkPath:   path.Join(tmpDir, "apks", "app-release-unsigned.apk"),
+			wantError: NotVerifiedError.Error(),
+		},
+		{
+			name:          "Reads V1 signature",
+			apkPath:       path.Join(tmpDir, "apks", "app-release-v1-signature.apk"),
+			wantSignature: "O=Bitrise",
+		},
+		{
+			name:          "Reads V2 signature",
+			apkPath:       path.Join(tmpDir, "apks", "app-release-v2-signature.apk"),
+			wantSignature: "O=Bitrise",
+		},
+		{
+			name:          "Reads V2+v3 signature",
+			apkPath:       path.Join(tmpDir, "apks", "app-release-v2-v3-signature.apk"),
+			wantSignature: "O=Bitrise",
+		},
+		{
+			name:          "Reads V2+v4 signature",
+			apkPath:       path.Join(tmpDir, "apks", "app-release-v2-v4-signature.apk"),
+			wantSignature: "O=Bitrise",
+		},
+		{
+			name:          "Reads V2+v4 signature with .idsig file",
+			apkPath:       path.Join(tmpDir, "apks", "app-release-v2-v4-signature.apk"),
+			idsigPath:     path.Join(tmpDir, "apks", "app-release-v2-v4-signature.apk.idsig"),
+			wantSignature: "O=Bitrise",
+		},
+		{
+			name:          "Reads V3+v4 signature",
+			apkPath:       path.Join(tmpDir, "apks", "app-release-v3-v4-signature.apk"),
+			wantSignature: "O=Bitrise",
+		},
+		{
+			name:          "Reads V3+v4 signature with .idsig file",
+			apkPath:       path.Join(tmpDir, "apks", "app-release-v3-v4-signature.apk"),
+			idsigPath:     path.Join(tmpDir, "apks", "app-release-v3-v4-signature.apk.idsig"),
+			wantSignature: "O=Bitrise",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotSignature, gotError := ReadAPKSignature(tt.apkPath, tt.idsigPath)
+			if tt.wantError != "" {
+				require.EqualError(t, gotError, tt.wantError)
+			} else {
+				require.NoError(t, gotError)
 			}
-			if len(gotErrors) != tt.wantErrorsCount {
-				t.Errorf(
-					"\nReadAPKSignature()\n - got_array:\t\t%+v\n - got:\t\t%+v\n - want:\t%+v",
-					errors.Join(gotErrors...),
-					len(gotErrors),
-					tt.wantErrorsCount,
-				)
-			}
+			require.Equal(t, gotSignature, tt.wantSignature)
 		})
 	}
 }
