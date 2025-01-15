@@ -64,7 +64,7 @@ func ReadAPKSignature(apkPath string, idsigPath string) (string, error) {
 		return signature, nil
 	}
 
-	return "", NotVerifiedError
+	return "", nil
 }
 
 func getV4Signature(apkPath string, idsigPath string) (string, error) {
