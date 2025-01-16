@@ -22,7 +22,7 @@ func Test_ReadAABSignature(t *testing.T) {
 
 	gitCommand, err := git.New(tmpDir)
 	require.NoError(t, err)
-	err = gitCommand.Clone("https://github.com/bitrise-io/sample-artifacts.git", "-b", "update-aabs").Run()
+	err = gitCommand.Clone("https://github.com/bitrise-io/sample-artifacts.git").Run()
 	require.NoError(t, err)
 
 	tests := []struct {
