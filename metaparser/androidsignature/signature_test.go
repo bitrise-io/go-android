@@ -61,7 +61,7 @@ func Test_ReadAABSignature(t *testing.T) {
 	}
 }
 
-func Test_ReadASignature(t *testing.T) {
+func Test_ReadAPKSignature(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "")
 	require.NoError(t, err)
 
@@ -86,7 +86,7 @@ func Test_ReadASignature(t *testing.T) {
 		{
 			name:      "Unsigned APK",
 			apkPath:   path.Join(tmpDir, "apks", "app-release-unsigned.apk"),
-			wantError: NotVerifiedError.Error(),
+			wantError: NoSignatureFoundError.Error(),
 		},
 		{
 			name:          "Debug signed APK",
