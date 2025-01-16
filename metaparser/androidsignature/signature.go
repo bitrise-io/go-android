@@ -13,6 +13,7 @@ import (
 )
 
 const (
+	unsignedJarSignatureMessage = "jar is unsigned"
 	validJarSignatureMessage    = "jar verified"
 	validV2PlusSignatureMessage = "Verifies"
 )
@@ -127,6 +128,10 @@ func getJarSignature(path string) (string, error) {
 
 	// TODO: tmp debug log
 	fmt.Println(output)
+
+	if strings.Contains(output, unsignedJarSignatureMessage) {
+		return "", NoSignatureFoundError
+	}
 
 	if !strings.Contains(output, validJarSignatureMessage) {
 		return "", NotVerifiedError

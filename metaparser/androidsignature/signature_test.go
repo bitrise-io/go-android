@@ -22,7 +22,7 @@ func Test_ReadAABSignature(t *testing.T) {
 
 	gitCommand, err := git.New(tmpDir)
 	require.NoError(t, err)
-	err = gitCommand.Clone("https://github.com/bitrise-io/sample-artifacts.git").Run()
+	err = gitCommand.Clone("https://github.com/bitrise-io/sample-artifacts.git", "-b", "update-aabs").Run()
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -33,8 +33,8 @@ func Test_ReadAABSignature(t *testing.T) {
 	}{
 		{
 			name:          "Reads AAB signature",
-			apkPath:       path.Join(tmpDir, "aab", "app-release-bitrise-signed.aab"),
-			wantSignature: "CN=Bitrise",
+			apkPath:       path.Join(tmpDir, "aab", "app-release.aab"),
+			wantSignature: "O=Bitrise",
 		},
 		{
 			name:      "Returns NotVerified for week signing algorithm",
