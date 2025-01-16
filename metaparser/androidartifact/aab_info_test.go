@@ -37,7 +37,7 @@ func Test_GetAABInfo(t *testing.T) {
 		t.Fatalf("setup: failed to initialize bundletool, error: %s", err)
 	}
 
-	aapPath := path.Join(tmpDir, "app-bitrise-signed.aab")
+	aapPath := path.Join(tmpDir, "aab", "app-weak-algorithm-signed.aab")
 	got, err := GetAABInfo(bt, aapPath)
 	if err != nil {
 		t.Fatalf("GetAABInfo() error = %v", err)
