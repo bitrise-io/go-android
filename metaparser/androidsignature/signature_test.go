@@ -29,17 +29,33 @@ func Test_ReadAABSignature(t *testing.T) {
 		name          string
 		apkPath       string
 		wantSignature string
+		wantError     string
 	}{
 		{
 			name:          "Reads AAB signature",
-			apkPath:       path.Join(tmpDir, "app-bitrise-signed.aab"),
+			apkPath:       path.Join(tmpDir, "aab", "app-release-bitrise-signed.aab"),
 			wantSignature: "CN=Bitrise",
+		},
+		{
+			name:      "Returns NotVerified for week signing algorithm",
+			apkPath:   path.Join(tmpDir, "aab", "app-weak-algorithm-signed.aab"),
+			wantError: NotVerifiedError.Error(),
+		},
+		{
+			name:      "Unsigned AAB",
+			apkPath:   path.Join(tmpDir, "aab", "app-release-unsigned.aab"),
+			wantError: NoSignatureFoundError.Error(),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotSignature, gotError := ReadAABSignature(tt.apkPath)
-			require.NoError(t, gotError)
+			if tt.wantError != "" {
+				require.EqualError(t, gotError, tt.wantError)
+			} else {
+				require.NoError(t, gotError)
+			}
+
 			require.Equal(t, tt.wantSignature, gotSignature)
 		})
 	}
