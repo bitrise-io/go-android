@@ -25,19 +25,21 @@ var (
 
 // Read ...
 //
-// Deprecated: Read is deprecated. Use ReadAABSignature method instead.
+// Deprecated: Read is deprecated. Use ReadAABSignature or ReadAPKSignature method instead.
 func Read(path string) (string, error) {
 	return ReadAABSignature(path)
 }
 
 // ReadAABSignature returns the signature of the provided AAB file.
-// If the AAB is not signed, it returns a NotVerifiedError.
+// If the signature can't be read (unsigned, unexpected certificate printing format, ...), it returns a NoSignatureFoundError.
+// If the signature is not verified, it returns a NotVerifiedError.
 func ReadAABSignature(path string) (string, error) {
 	return getJarSignature(path)
 }
 
 // ReadAPKSignature returns the signature of the provided APK file.
-// If the APK is not signed, it returns a NotVerifiedError.
+// If the signature can't be read (unsigned, unexpected certificate printing format, ...), it returns a NoSignatureFoundError.
+// If the signature is not verified, it returns a NotVerifiedError.
 func ReadAPKSignature(apkPath string) (string, error) {
 	idSigPath := apkPath + ".idsig"
 	if _, err := os.Stat(idSigPath); err == nil {
