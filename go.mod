@@ -14,5 +14,5 @@ require (
 	github.com/lwithers/minijks v1.1.0
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/stretchr/testify v1.9.0
-	golang.org/x/crypto v0.25.0 // indirect
+	golang.org/x/crypto v0.31.0 // indirect
 )
