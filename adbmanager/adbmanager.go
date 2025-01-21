@@ -3,20 +3,21 @@ package adbmanager
 import (
 	"fmt"
 	"path/filepath"
+	"time"
 
 	"github.com/bitrise-io/go-android/v2/sdk"
 	"github.com/bitrise-io/go-utils/pathutil"
 	"github.com/bitrise-io/go-utils/v2/command"
+	"github.com/bitrise-io/go-utils/v2/log"
 )
 
-// Model ...
 type Model struct {
 	binPth     string
 	cmdFactory command.Factory
+	logger     log.Logger
 }
 
-// New ...
-func New(sdk sdk.AndroidSdkInterface, cmdFactory command.Factory) (*Model, error) {
+func New(sdk sdk.AndroidSdkInterface, cmdFactory command.Factory, logger log.Logger) (*Model, error) {
 	binPth := filepath.Join(sdk.GetAndroidHome(), "platform-tools", "adb")
 	if exist, err := pathutil.IsPathExists(binPth); err != nil {
 		return nil, fmt.Errorf("failed to check if adb exist, error: %s", err)
@@ -27,16 +28,15 @@ func New(sdk sdk.AndroidSdkInterface, cmdFactory command.Factory) (*Model, error
 	return &Model{
 		binPth:     binPth,
 		cmdFactory: cmdFactory,
+		logger:     logger,
 	}, nil
 }
 
-// DevicesCmd ...
 func (model Model) DevicesCmd() *command.Command {
 	cmd := model.cmdFactory.Create(model.binPth, []string{"devices"}, nil)
 	return &cmd
 }
 
-// UnlockDevice ...
 func (model Model) UnlockDevice(serial string) error {
 	keyEvent82Cmd := model.cmdFactory.Create(model.binPth, []string{"-s", serial, "shell", "input", "82", "&"}, nil)
 	if err := keyEvent82Cmd.Run(); err != nil {
@@ -90,6 +90,37 @@ func (model Model) RunInstrumentedTestsCmd(
 
 	cmd := model.cmdFactory.Create(model.binPth, args, commandOptions)
 	return cmd
+}
+
+func (model Model) WaitForDevice(serial string, timeout time.Duration) error {
+	startTime := time.Now()
+
+	for {
+		model.logger.Printf("Waiting for emulator to boot...")
+
+		bootCompleteChan := model.getBootCompleteEvent(serial, timeout)
+		result := <-bootCompleteChan
+		switch {
+		case result.Error != nil:
+			model.logger.Warnf("Failed to check emulator boot status: %s", result.Error)
+			model.logger.Warnf("Killing ADB server before retry...")
+			killCmd := model.KillServerCmd(nil)
+			if out, err := killCmd.RunAndReturnTrimmedCombinedOutput(); err != nil {
+				return fmt.Errorf("terminate adb server: %s", out)
+			}
+		case result.Booted:
+			model.logger.Donef("Device boot completed in %d seconds", time.Since(startTime)/time.Second)
+			return nil
+		}
+
+		if time.Now().After(startTime.Add(timeout)) {
+			return fmt.Errorf("emulator boot check timed out after %s seconds", time.Since(startTime)/time.Second)
+		}
+
+		delay := 5 * time.Second
+		model.logger.Printf("Device is online but still booting, retrying in %d seconds", delay/time.Second)
+		time.Sleep(delay)
+	}
 }
 
 // WaitForDeviceThenShellCmd returns a command that first waits for a device to come online, then executes the provided
