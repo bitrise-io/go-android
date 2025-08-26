@@ -2,11 +2,10 @@ package androidartifact
 
 import (
 	"os"
-	"path"
+	"path/filepath"
 	"testing"
 
-	"github.com/bitrise-io/go-utils/command/git"
-	"github.com/bitrise-io/go-utils/log"
+	"github.com/bitrise-io/go-android/v2/metaparser/github"
 )
 
 const testArtifactAndroidManifest string = `<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:versionCode="1" android:versionName="1.0" package="com.example.birmachera.myapplication">
@@ -24,29 +23,7 @@ const testArtifactAndroidManifest string = `<manifest xmlns:android="http://sche
 
 func TestGetAPKInfoWithFallback(t *testing.T) {
 	tLogger := &testLogger{}
-	tmpDir, err := os.MkdirTemp("", "")
-	if err != nil {
-		t.Fatalf("setup: failed to create temp dir, error: %s", err)
-	}
 
-	defer func() {
-		if err := os.RemoveAll(tmpDir); err != nil {
-			log.Warnf("failed to remove temp dir, error: %s", err)
-		}
-	}()
-
-	gitCommand, err := git.New(tmpDir)
-	if err != nil {
-		t.Fatalf("setup: failed to create git project, error: %s", err)
-	}
-	if err := gitCommand.Clone("https://github.com/bitrise-io/sample-artifacts.git").Run(); err != nil {
-		t.Fatalf("setup: failed to clone test artifact repo, error: %s", err)
-	}
-
-	type args struct {
-		logger Logger
-		apkPth string
-	}
 	tests := []struct {
 		name    string
 		apkPath string
@@ -55,7 +32,7 @@ func TestGetAPKInfoWithFallback(t *testing.T) {
 	}{
 		{
 			name:    "valid apk",
-			apkPath: path.Join(tmpDir, "apks", "app-debug.apk"),
+			apkPath: "apks/app-debug.apk",
 			want: Info{
 				AppName:           "My Application",
 				PackageName:       "com.example.birmachera.myapplication",
@@ -64,11 +41,10 @@ func TestGetAPKInfoWithFallback(t *testing.T) {
 				MinSDKVersion:     "17",
 				RawPackageContent: testArtifactAndroidManifest,
 			},
-			wantErr: false,
 		},
 		{
 			name:    "apk with unicode app name",
-			apkPath: path.Join(tmpDir, "apks", "app-debug-uncode-name.apk"),
+			apkPath: "apks/app-debug-uncode-name.apk",
 			want: Info{
 				AppName:       "My Application Unicode 🤪",
 				PackageName:   "com.example.myapplicationUnicode",
@@ -76,12 +52,29 @@ func TestGetAPKInfoWithFallback(t *testing.T) {
 				VersionName:   "1.0",
 				MinSDKVersion: "33",
 			},
-			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := GetAPKInfoWithFallback(tLogger, tt.apkPath)
+			// Faster than cloning repo
+			contents, err := github.FetchFile(
+				"bitrise-io",
+				"sample-artifacts",
+				tt.apkPath,
+				"master",
+				os.Getenv("GITHUB_API_TOKEN"),
+			)
+			if err != nil {
+				t.Fatalf("failed to fetch test artifact: %s", err)
+			}
+
+			tmpDir := t.TempDir()
+			apkPath := filepath.Join(tmpDir, "test.apk")
+			if err := os.WriteFile(apkPath, contents, os.ModePerm); err != nil {
+				t.Fatalf("failed to write file, error: %s", err)
+			}
+
+			got, err := GetAPKInfoWithFallback(tLogger, apkPath)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetAPKInfoWithFallback() error = %v, wantErr %v", err, tt.wantErr)
 				return

@@ -3,33 +3,31 @@ package androidartifact
 import (
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/bitrise-io/go-android/v2/metaparser/bundletool"
-	"github.com/bitrise-io/go-utils/command/git"
-	"github.com/bitrise-io/go-utils/log"
+	"github.com/bitrise-io/go-android/v2/metaparser/github"
 	"github.com/kr/pretty"
 )
 
 func Test_GetAABInfo(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "")
+	contents, err := github.FetchFile(
+		"bitrise-io",
+		"sample-artifacts",
+		path.Join("aab", "app-weak-algorithm-signed.aab"),
+		"master",
+		os.Getenv("GITHUB_API_TOKEN"),
+	)
 	if err != nil {
-		t.Fatalf("setup: failed to create temp dir, error: %s", err)
+		t.Fatalf("failed to fetch test artifact: %s", err)
 	}
 
-	defer func() {
-		if err := os.RemoveAll(tmpDir); err != nil {
-			log.Warnf("failed to remove temp dir, error: %s", err)
-		}
-	}()
-
-	gitCommand, err := git.New(tmpDir)
-	if err != nil {
-		t.Fatalf("setup: failed to create git project, error: %s", err)
-	}
-	if err := gitCommand.Clone("https://github.com/bitrise-io/sample-artifacts.git").Run(); err != nil {
-		t.Fatalf("setup: failed to clone test artifact repo, error: %s", err)
+	tmpDir := t.TempDir()
+	aabPath := filepath.Join(tmpDir, "temp.aab")
+	if err := os.WriteFile(aabPath, contents, os.ModePerm); err != nil {
+		t.Fatalf("failed to write file, error: %s", err)
 	}
 
 	bt, err := bundletool.New("1.15.0")
@@ -37,8 +35,7 @@ func Test_GetAABInfo(t *testing.T) {
 		t.Fatalf("setup: failed to initialize bundletool, error: %s", err)
 	}
 
-	aapPath := path.Join(tmpDir, "aab", "app-weak-algorithm-signed.aab")
-	got, err := GetAABInfo(bt, aapPath)
+	got, err := GetAABInfo(bt, aabPath)
 	if err != nil {
 		t.Fatalf("GetAABInfo() error = %v", err)
 	}
