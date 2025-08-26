@@ -4,7 +4,6 @@ import (
 	"crypto/md5"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -167,7 +166,7 @@ func (c AndroidGradleCacheItemCollector) prepareUnmodifiedIndicator(indicator st
 		return "", fmt.Errorf("%s has not modification compared to HEAD", indicator)
 	}
 
-	file, err := ioutil.TempFile(os.TempDir(), "indicator")
+	file, err := os.CreateTemp("", "indicator")
 	if err != nil {
 		return "", err
 	}

@@ -1,7 +1,6 @@
 package sdk
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -75,31 +74,15 @@ func TestLatestBuildToolPath(t *testing.T) {
 }
 
 func TestNewDefaultModel(t *testing.T) {
-	androidHome, err := ioutil.TempDir("", "")
+	androidHome, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
-	}
-	if androidHome, err = filepath.EvalSymlinks(androidHome); err != nil {
 		t.Fatalf("failed to eval symlink: %v", err)
 	}
-	defer func() {
-		if err := os.RemoveAll(androidHome); err != nil {
-			t.Errorf("failed to remove temp dir: %v", err)
-		}
-	}()
 
-	sdkRoot, err := ioutil.TempDir("", "")
+	sdkRoot, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
-	}
-	if sdkRoot, err = filepath.EvalSymlinks(sdkRoot); err != nil {
 		t.Fatalf("failed to eval symlink: %v", err)
 	}
-	defer func() {
-		if err := os.RemoveAll(sdkRoot); err != nil {
-			t.Errorf("failed to remove temp dir: %v", err)
-		}
-	}()
 
 	tests := []struct {
 		name    string
@@ -219,11 +202,7 @@ func TestModel_CmdlineToolsPath(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			SDKRoot, err := ioutil.TempDir("", "")
-			if err != nil {
-				t.Fatalf("failed to create temp dir")
-			}
-
+			SDKRoot := t.TempDir()
 			for _, path := range tt.SDKlayout {
 				if err := os.MkdirAll(filepath.Join(SDKRoot, path), 0700); err != nil {
 					t.Fatalf("failed  to create SDK layout: %v", err)
