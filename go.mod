@@ -1,6 +1,6 @@
 module github.com/bitrise-io/go-android/v2
 
-go 1.23.0
+go 1.22.10
 
 require (
 	github.com/avast/apkparser v0.0.0-20250626104540-d53391f4d69d
