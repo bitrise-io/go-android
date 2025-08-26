@@ -56,7 +56,7 @@ type usesSdk struct {
 func GetAPKInfo(apkPath string) (Info, error) {
 	var manifestContent bytes.Buffer
 	enc := xml.NewEncoder(&manifestContent)
-	// enc.Indent("", "\t")
+	enc.Indent("", "\t")
 
 	zipErr, resErr, manErr := apkparser.ParseApk(apkPath, enc)
 	if zipErr != nil {
