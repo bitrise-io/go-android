@@ -62,7 +62,7 @@ func TestGetAPKInfoWithFallback(t *testing.T) {
 				"sample-artifacts",
 				tt.apkPath,
 				"master",
-				os.Getenv("GITHUB_API_TOKEN"),
+				os.Getenv("GITHUB_TOKEN"),
 			)
 			if err != nil {
 				t.Fatalf("failed to fetch test artifact: %s", err)

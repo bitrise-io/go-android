@@ -18,7 +18,7 @@ func Test_GetAABInfo(t *testing.T) {
 		"sample-artifacts",
 		path.Join("aab", "app-weak-algorithm-signed.aab"),
 		"master",
-		os.Getenv("GITHUB_API_TOKEN"),
+		os.Getenv("GITHUB_TOKEN"),
 	)
 	if err != nil {
 		t.Fatalf("failed to fetch test artifact: %s", err)
