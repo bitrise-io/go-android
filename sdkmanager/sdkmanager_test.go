@@ -1,14 +1,13 @@
 package sdkmanager
 
 import (
-	"github.com/bitrise-io/go-utils/v2/command"
-	"github.com/bitrise-io/go-utils/v2/env"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/bitrise-io/go-android/v2/sdk"
+	"github.com/bitrise-io/go-utils/v2/command"
+	"github.com/bitrise-io/go-utils/v2/env"
 	"github.com/stretchr/testify/require"
 )
 
@@ -55,25 +54,17 @@ func TestNew(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sdkRoot, err := ioutil.TempDir("", "")
+			sdkRoot, err := filepath.EvalSymlinks(t.TempDir())
 			if err != nil {
-				t.Fatalf("failed to create temp dir: %v", err)
-			}
-			if sdkRoot, err = filepath.EvalSymlinks(sdkRoot); err != nil {
 				t.Fatalf("failed to eval symlink: %v", err)
 			}
-			defer func() {
-				if err := os.RemoveAll(sdkRoot); err != nil {
-					t.Errorf("failed to remove temp dir: %v", err)
-				}
-			}()
 
 			for dir, file := range tt.sdkLayout {
 				if err := os.MkdirAll(filepath.Join(sdkRoot, dir), 0700); err != nil {
 					t.Fatalf("failed to create directory: %s", err)
 				}
 
-				if err := ioutil.WriteFile(filepath.Join(sdkRoot, dir, file), []byte{}, 0600); err != nil {
+				if err := os.WriteFile(filepath.Join(sdkRoot, dir, file), []byte{}, 0600); err != nil {
 					t.Fatalf("failed to create file: %s", err)
 				}
 			}

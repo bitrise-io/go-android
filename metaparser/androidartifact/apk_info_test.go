@@ -2,53 +2,11 @@ package androidartifact
 
 import (
 	"os"
-	"path"
-	"reflect"
+	"path/filepath"
 	"testing"
 
-	"github.com/bitrise-io/go-utils/command/git"
-	"github.com/bitrise-io/go-utils/log"
+	"github.com/bitrise-io/go-android/v2/metaparser/github"
 )
-
-func Test_GetAPKInfoWithFallback(t *testing.T) {
-	tLogger := &testLogger{}
-	tmpDir, err := os.MkdirTemp("", "")
-	if err != nil {
-		t.Fatalf("setup: failed to create temp dir, error: %s", err)
-	}
-
-	defer func() {
-		if err := os.RemoveAll(tmpDir); err != nil {
-			log.Warnf("failed to remove temp dir, error: %s", err)
-		}
-	}()
-
-	gitCommand, err := git.New(tmpDir)
-	if err != nil {
-		t.Fatalf("setup: failed to create git project, error: %s", err)
-	}
-	if err := gitCommand.Clone("https://github.com/bitrise-io/sample-artifacts.git").Run(); err != nil {
-		t.Fatalf("setup: failed to clone test artifact repo, error: %s", err)
-	}
-
-	apkPath := path.Join(tmpDir, "apks", "app-debug.apk")
-	got, err := GetAPKInfoWithFallback(tLogger, apkPath)
-	if err != nil {
-		t.Fatalf("GetAPKInfo() error = %v", err)
-	}
-
-	want := Info{
-		AppName:           "My Application",
-		PackageName:       "com.example.birmachera.myapplication",
-		VersionCode:       "1",
-		VersionName:       "1.0",
-		MinSDKVersion:     "17",
-		RawPackageContent: testArtifactAndroidManifest,
-	}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("GetAPKInfo() = %+v, want %+v", got, want)
-	}
-}
 
 const testArtifactAndroidManifest string = `<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:versionCode="1" android:versionName="1.0" package="com.example.birmachera.myapplication">
 	<uses-sdk android:minSdkVersion="17" android:targetSdkVersion="28"></uses-sdk>
@@ -62,3 +20,84 @@ const testArtifactAndroidManifest string = `<manifest xmlns:android="http://sche
 		</activity>
 	</application>
 </manifest>`
+
+func TestGetAPKInfoWithFallback(t *testing.T) {
+	tLogger := &testLogger{}
+
+	tests := []struct {
+		name    string
+		apkPath string
+		want    Info
+		wantErr bool
+	}{
+		{
+			name:    "valid apk",
+			apkPath: "apks/app-debug.apk",
+			want: Info{
+				AppName:           "My Application",
+				PackageName:       "com.example.birmachera.myapplication",
+				VersionCode:       "1",
+				VersionName:       "1.0",
+				MinSDKVersion:     "17",
+				RawPackageContent: testArtifactAndroidManifest,
+			},
+		},
+		{
+			name:    "apk with unicode app name",
+			apkPath: "apks/app-debug-uncode-name.apk",
+			want: Info{
+				AppName:       "My Application Unicode 🤪",
+				PackageName:   "com.example.myapplicationUnicode",
+				VersionCode:   "1",
+				VersionName:   "1.0",
+				MinSDKVersion: "33",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Faster than cloning repo
+			contents, err := github.FetchFile(
+				"bitrise-io",
+				"sample-artifacts",
+				tt.apkPath,
+				"master",
+				os.Getenv("GITHUB_TOKEN"),
+			)
+			if err != nil {
+				t.Fatalf("failed to fetch test artifact: %s", err)
+			}
+
+			tmpDir := t.TempDir()
+			apkPath := filepath.Join(tmpDir, "test.apk")
+			if err := os.WriteFile(apkPath, contents, os.ModePerm); err != nil {
+				t.Fatalf("failed to write file, error: %s", err)
+			}
+
+			got, err := GetAPKInfoWithFallback(tLogger, apkPath)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetAPKInfoWithFallback() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if got.AppName != tt.want.AppName {
+				t.Fatalf("GetAPKInfo() app name = %+v, want %+v", got.AppName, tt.want.AppName)
+			}
+			if got.PackageName != tt.want.PackageName {
+				t.Fatalf("GetAPKInfo() package name = %+v, want %+v", got.PackageName, tt.want.PackageName)
+			}
+			if got.VersionCode != tt.want.VersionCode {
+				t.Fatalf("GetAPKInfo() version code = %+v, want %+v", got.VersionCode, tt.want.VersionCode)
+			}
+			if got.VersionName != tt.want.VersionName {
+				t.Fatalf("GetAPKInfo() version name = %+v, want %+v", got.VersionName, tt.want.VersionName)
+			}
+			if got.MinSDKVersion != tt.want.MinSDKVersion {
+				t.Fatalf("GetAPKInfo() min sdk version = %+v, want %+v", got.MinSDKVersion, tt.want.MinSDKVersion)
+			}
+			if tt.want.RawPackageContent != "" && got.RawPackageContent != tt.want.RawPackageContent {
+				t.Fatalf("GetAPKInfo() raw package content = %+v, want %+v", got.RawPackageContent, tt.want.RawPackageContent)
+			}
+		})
+	}
+}
