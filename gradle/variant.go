@@ -1,9 +1,8 @@
 package gradle
 
 import (
+	"slices"
 	"strings"
-
-	"golang.org/x/exp/slices"
 )
 
 // Variants ...
