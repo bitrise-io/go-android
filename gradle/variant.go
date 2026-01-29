@@ -3,7 +3,7 @@ package gradle
 import (
 	"strings"
 
-	"github.com/bitrise-io/go-utils/sliceutil"
+	"golang.org/x/exp/slices"
 )
 
 // Variants ...
@@ -34,7 +34,7 @@ func (v Variants) Filter(module, filter string) Variants {
 		for _, variant := range variants {
 			for _, filter := range cleanedFilters {
 				if strings.Contains(strings.ToLower(variant), strings.ToLower(filter)) &&
-					!sliceutil.IsStringInSlice(variant, cleanedVariants[m]) {
+					!slices.Contains(cleanedVariants[m], variant) {
 					cleanedVariants[m] = append(cleanedVariants[m], variant)
 				}
 			}
