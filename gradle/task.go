@@ -21,6 +21,7 @@ func (task *Task) GetVariants(args ...string) (Variants, error) {
 	args = append([]string{"tasks", "--all", "--console=plain", "--quiet"}, args...)
 	cmd := task.project.cmdFactory.Create(filepath.Join(task.project.location, "gradlew"), args, &opts)
 	tasksOutput, err := cmd.RunAndReturnTrimmedCombinedOutput()
+	fmt.Println(tasksOutput)
 	if err != nil {
 		return nil, fmt.Errorf("%s, %s", tasksOutput, err)
 	}
