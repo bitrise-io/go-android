@@ -3,6 +3,8 @@ package gradle
 import (
 	"reflect"
 	"testing"
+
+	"github.com/bitrise-io/go-utils/v2/log"
 )
 
 func TestTask_parseVariants(t *testing.T) {
@@ -30,10 +32,7 @@ func TestTask_parseVariants(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			task := &Task{
-				name:    tt.taskName,
-				project: Project{},
-			}
+			task := NewTask(tt.taskName, Project{}, log.NewLogger())
 			if got := task.parseVariants(tt.gradleOutput); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Task.parseVariants() = %v, want %v", got, tt.want)
 			}
