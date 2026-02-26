@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/bitrise-io/go-utils/v2/command"
@@ -28,6 +29,9 @@ func NewTask(name string, project Project, logger log.Logger) *Task {
 
 // GetVariants ...
 func (task *Task) GetVariants(args ...string) (Variants, error) {
+	args = slices.DeleteFunc(args, func(arg string) bool {
+		return arg == "--debug" || arg == "-d" || arg == "--info" || arg == "-i" || arg == "--quiet" || arg == "-q" || arg == "--warn" || arg == "-w"
+	})
 	opts := command.Opts{Dir: task.project.location}
 	args = append([]string{"tasks", "--all", "--console=plain", "--quiet", "--no-build-cache", "--no-daemon"}, args...)
 	cmd := task.project.cmdFactory.Create(filepath.Join(task.project.location, "gradlew"), args, &opts)
