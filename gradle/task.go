@@ -28,7 +28,8 @@ func NewTask(name string, project Project, logger log.Logger) *Task {
 }
 
 // GetVariants ...
-func (task *Task) GetVariants(args ...string) (Variants, error) {
+func (task *Task) GetVariants(customArgs ...string) (Variants, error) {
+	args := slices.Clone(customArgs)
 	args = slices.DeleteFunc(args, func(arg string) bool {
 		return arg == "--debug" || arg == "-d" || arg == "--info" || arg == "-i" || arg == "--quiet" || arg == "-q" || arg == "--warn" || arg == "-w"
 	})
