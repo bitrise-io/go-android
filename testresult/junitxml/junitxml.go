@@ -8,6 +8,11 @@ import (
 	"github.com/bitrise-io/go-steputils/v2/testreport"
 )
 
+// Converter holds data of the converter
+type Converter struct {
+	results []resultReader
+}
+
 func (c *Converter) Setup(_ bool) {}
 
 func (c *Converter) Detect(files []string) bool {
