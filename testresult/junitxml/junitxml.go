@@ -2,10 +2,10 @@ package junitxml
 
 import (
 	"encoding/xml"
+	"fmt"
 	"strings"
 
 	"github.com/bitrise-io/go-steputils/v2/testreport"
-	errorPkg "github.com/pkg/errors"
 )
 
 func (c *Converter) Setup(_ bool) {}
@@ -54,7 +54,7 @@ func parseTestReport(result resultReader) (TestReport, error) {
 		return TestReport{TestSuites: []TestSuite{testSuite}}, nil
 	}
 
-	return TestReport{}, errorPkg.Wrap(errorPkg.Wrap(testSuiteErr, string(data)), testReportErr.Error())
+	return TestReport{}, fmt.Errorf("%s: %s: %w", testReportErr.Error(), string(data), testSuiteErr)
 }
 
 func convertTestReport(report TestReport) testreport.TestReport {
