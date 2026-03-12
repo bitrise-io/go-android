@@ -13,8 +13,6 @@ type Converter struct {
 	results []resultReader
 }
 
-func (c *Converter) Setup(_ bool) {}
-
 func (c *Converter) Detect(files []string) bool {
 	c.results = nil
 	for _, file := range files {
