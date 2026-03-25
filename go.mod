@@ -6,8 +6,9 @@ require (
 	github.com/avast/apkparser v0.0.0-20250626104540-d53391f4d69d
 	github.com/bitrise-io/go-pkcs12 v0.1.0
 	github.com/bitrise-io/go-steputils v1.0.6
+	github.com/bitrise-io/go-steputils/v2 v2.0.0-alpha.49
 	github.com/bitrise-io/go-utils v1.0.15
-	github.com/bitrise-io/go-utils/v2 v2.0.0-alpha.25
+	github.com/bitrise-io/go-utils/v2 v2.0.0-alpha.34
 	github.com/hashicorp/go-version v1.7.0
 	github.com/kr/pretty v0.3.1
 	github.com/lwithers/minijks v1.1.0
