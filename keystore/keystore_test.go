@@ -1,10 +1,10 @@
 package keystore
 
 import (
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -123,7 +123,7 @@ func TestParse(t *testing.T) {
 			password:           "keystore",
 			privateKeyAlias:    "mykey",
 			privateKeyPassword: "keystore",
-			wantError:          "failed to decode keystore:",
+			wantError:          InvalidKeystoreFileError.Error(),
 		},
 	}
 	for _, tt := range tests {
@@ -142,7 +142,7 @@ func TestParse(t *testing.T) {
 			got, err := parser.ReadCertificateInformation(b, tt.password, tt.privateKeyAlias, tt.privateKeyPassword)
 			if tt.wantError != "" {
 				require.Error(t, err)
-				require.True(t, strings.Contains(err.Error(), tt.wantError))
+				require.True(t, errors.Is(err, InvalidKeystoreFileError))
 				require.Nil(t, got)
 			} else {
 				require.NoError(t, err)
