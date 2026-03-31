@@ -4,7 +4,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -18,7 +17,7 @@ func TestParse(t *testing.T) {
 		privateKeyAlias    string
 		privateKeyPassword string
 		want               *CertificateInformation
-		wantError          string
+		wantError          error
 	}{
 		{
 			name:               "PKCS12 keystore test",
@@ -123,7 +122,7 @@ func TestParse(t *testing.T) {
 			password:           "keystore",
 			privateKeyAlias:    "mykey",
 			privateKeyPassword: "keystore",
-			wantError:          "failed to decode keystore:",
+			wantError:          InvalidKeystoreFileError,
 		},
 	}
 	for _, tt := range tests {
@@ -140,9 +139,8 @@ func TestParse(t *testing.T) {
 
 			parser := NewDefaultReader()
 			got, err := parser.ReadCertificateInformation(b, tt.password, tt.privateKeyAlias, tt.privateKeyPassword)
-			if tt.wantError != "" {
-				require.Error(t, err)
-				require.True(t, strings.Contains(err.Error(), tt.wantError))
+			if tt.wantError != nil {
+				require.ErrorIs(t, err, tt.wantError)
 				require.Nil(t, got)
 			} else {
 				require.NoError(t, err)
@@ -159,7 +157,7 @@ func TestIncorrectKeystoreCredentials(t *testing.T) {
 		password           string
 		privateKeyAlias    string
 		privateKeyPassword string
-		wantError          string
+		wantError          error
 	}{
 		{
 			name:               "PKCS12 keystore test - incorrect password",
@@ -167,7 +165,7 @@ func TestIncorrectKeystoreCredentials(t *testing.T) {
 			password:           "incorrect-password",
 			privateKeyAlias:    "key0",
 			privateKeyPassword: "keypass",
-			wantError:          IncorrectKeystorePasswordError.Error(),
+			wantError:          IncorrectKeystorePasswordError,
 		},
 		{
 			name:               "PKCS12 keystore test - incorrect alias",
@@ -175,7 +173,7 @@ func TestIncorrectKeystoreCredentials(t *testing.T) {
 			password:           "storepass",
 			privateKeyAlias:    "incorrect-alias",
 			privateKeyPassword: "keypass",
-			wantError:          IncorrectAliasError.Error(),
+			wantError:          IncorrectAliasError,
 		},
 		{
 			name:               "PKCS12 keystore test - incorrect key password",
@@ -183,7 +181,7 @@ func TestIncorrectKeystoreCredentials(t *testing.T) {
 			password:           "storepass",
 			privateKeyAlias:    "key0",
 			privateKeyPassword: "incorrect-keypassword",
-			wantError:          IncorrectKeyPasswordError.Error(),
+			wantError:          IncorrectKeyPasswordError,
 		},
 		{
 			name:               "JKS keystore test - incorrect password",
@@ -191,7 +189,7 @@ func TestIncorrectKeystoreCredentials(t *testing.T) {
 			password:           "incorrect-password",
 			privateKeyAlias:    "mykey",
 			privateKeyPassword: "keystore",
-			wantError:          IncorrectKeystorePasswordError.Error(),
+			wantError:          IncorrectKeystorePasswordError,
 		},
 		{
 			name:               "JKS keystore test - incorrect alias",
@@ -199,7 +197,7 @@ func TestIncorrectKeystoreCredentials(t *testing.T) {
 			password:           "keystore",
 			privateKeyAlias:    "incorrect-alias",
 			privateKeyPassword: "keystore",
-			wantError:          IncorrectAliasError.Error(),
+			wantError:          IncorrectAliasError,
 		},
 		{
 			name:               "JKS keystore test - incorrect key password",
@@ -207,7 +205,7 @@ func TestIncorrectKeystoreCredentials(t *testing.T) {
 			password:           "keystore",
 			privateKeyAlias:    "mykey",
 			privateKeyPassword: "incorrect-keypassword",
-			wantError:          IncorrectKeyPasswordError.Error(),
+			wantError:          IncorrectKeyPasswordError,
 		},
 	}
 	for _, tt := range tests {
@@ -224,7 +222,7 @@ func TestIncorrectKeystoreCredentials(t *testing.T) {
 
 			parser := NewDefaultReader()
 			got, err := parser.ReadCertificateInformation(b, tt.password, tt.privateKeyAlias, tt.privateKeyPassword)
-			require.EqualError(t, err, tt.wantError)
+			require.ErrorIs(t, err, tt.wantError)
 			require.Nil(t, got)
 		})
 	}
@@ -238,7 +236,6 @@ func TestIsInvalidCredentialsError(t *testing.T) {
 		password           string
 		privateKeyAlias    string
 		privateKeyPassword string
-		wantError          string
 	}{
 		{
 			name:               "PKCS12 keystore, JKS decoder",
@@ -247,7 +244,6 @@ func TestIsInvalidCredentialsError(t *testing.T) {
 			password:           "storepass",
 			privateKeyAlias:    "key0",
 			privateKeyPassword: "keypass",
-			wantError:          IncorrectKeystorePasswordError.Error(),
 		},
 		{
 			name:               "JKS keystore, PKCS12 decoder",
@@ -256,7 +252,6 @@ func TestIsInvalidCredentialsError(t *testing.T) {
 			password:           "keystore",
 			privateKeyAlias:    "mykey",
 			privateKeyPassword: "keystore",
-			wantError:          IncorrectAliasError.Error(),
 		},
 	}
 	for _, tt := range tests {

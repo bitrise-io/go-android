@@ -21,6 +21,7 @@ var (
 	IncorrectAliasError            = errors.New("incorrect key alias")
 	IncorrectKeystorePasswordError = errors.New("incorrect keystore password")
 	IncorrectKeyPasswordError      = errors.New("incorrect key password")
+	InvalidKeystoreFileError       = errors.New("invalid keystore file")
 )
 
 type Decoder interface {
@@ -59,6 +60,7 @@ func (p Reader) ReadCertificateInformation(data []byte, password, alias, keyPass
 	}
 
 	if cert == nil && len(decodeErrs) > 0 {
+		// All decoders have failed
 		decodeErrsStr := ""
 		for i, decodeErr := range decodeErrs {
 			decodeErrsStr += "- " + decodeErr.Error()
@@ -66,7 +68,12 @@ func (p Reader) ReadCertificateInformation(data []byte, password, alias, keyPass
 				decodeErrsStr += "\n"
 			}
 		}
-		return nil, fmt.Errorf("failed to decode keystore:\n%s", decodeErrsStr)
+		return nil, fmt.Errorf("%w: failed to decode as PKCS12 or JKS:\n%s", InvalidKeystoreFileError, decodeErrsStr)
+	}
+
+	if cert == nil {
+		// This shouldn't happen
+		return nil, fmt.Errorf("couldn't read certificate")
 	}
 
 	certInfo := parseCertificate(cert)
