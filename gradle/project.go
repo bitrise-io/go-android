@@ -140,7 +140,11 @@ func (proj Project) extractArtifactName(path string, includeModuleInName bool) (
 	fileName := filepath.Base(relPath)
 
 	if includeModuleInName {
-		fileName = strings.Split(relPath, "/")[0] + "-" + fileName
+		modulePath := strings.Split(relPath, "/")[0]
+		if idx := strings.Index(relPath, "/build/"); idx > 0 {
+			modulePath = strings.ReplaceAll(relPath[:idx], "/", "-")
+		}
+		fileName = modulePath + "-" + fileName
 	}
 
 	if proj.monoRepo {
