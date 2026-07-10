@@ -9,8 +9,11 @@ import (
 	"strings"
 
 	"github.com/bitrise-io/go-android/v2/sdk"
-	"github.com/bitrise-io/go-utils/command"
+	"github.com/bitrise-io/go-utils/v2/command"
+	"github.com/bitrise-io/go-utils/v2/env"
 )
+
+var cmdFactory = command.NewFactory(env.NewRepository())
 
 const (
 	unsignedJarSignatureMessage = "jar is unsigned"
@@ -92,7 +95,7 @@ func getV2PlusSignature(pathParams []string) (string, error) {
 	}
 
 	params := append([]string{"verify", "--print-certs", "-v"}, pathParams...)
-	apkSignerOutput, err := command.New(apkSignerPath, params...).RunAndReturnTrimmedCombinedOutput()
+	apkSignerOutput, err := cmdFactory.Create(apkSignerPath, params, nil).RunAndReturnTrimmedCombinedOutput()
 	if err != nil {
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
@@ -123,7 +126,7 @@ func getV2PlusSignature(pathParams []string) (string, error) {
 
 func getJarSignature(path string) (string, error) {
 	params := []string{"-verify", "-certs", "-verbose", path}
-	output, err := command.New("jarsigner", params...).RunAndReturnTrimmedCombinedOutput()
+	output, err := cmdFactory.Create("jarsigner", params, nil).RunAndReturnTrimmedCombinedOutput()
 	if err != nil {
 		return "", err
 	}
