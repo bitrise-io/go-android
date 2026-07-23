@@ -52,6 +52,12 @@ func TestVariantFromPath(t *testing.T) {
 			wantOK: true,
 		},
 		{
+			name:   "flavor named like the kind marker is not mistaken for it",
+			path:   "/bitrise/src/app/build/outputs/apk/apk/release/app.apk",
+			want:   ArtifactVariant{Module: "app", Variant: "apkRelease"},
+			wantOK: true,
+		},
+		{
 			name:   "unrecognised path",
 			path:   "/bitrise/src/some/random/file.apk",
 			want:   ArtifactVariant{},

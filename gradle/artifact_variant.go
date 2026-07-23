@@ -31,33 +31,38 @@ func (artifact Artifact) Variant() (variant ArtifactVariant, ok bool) {
 // merged directory (build/outputs/bundle/demoRelease/,
 // build/outputs/mapping/demoRelease/). Joining the APK's segments yields the
 // same merged name, so an APK and its mapping resolve to equal ArtifactVariants.
-// ok is false when the path is not a recognised output or mapping path.
+//
+// It anchors on the "outputs" (or "intermediates") directory and reads the
+// artifact kind that follows it, so a flavor directory that happens to be named
+// "apk"/"bundle"/"mapping" is not mistaken for the kind marker. ok is false when
+// the path is not a recognised output or mapping path.
 func VariantFromPath(path string) (variant ArtifactVariant, ok bool) {
 	segments := strings.Split(filepath.ToSlash(path), "/")
-	if len(segments) < 2 {
-		return ArtifactVariant{}, false
-	}
 
-	module := moduleFromSegments(segments)
+	for i := 0; i+1 < len(segments); i++ {
+		if segments[i] != "outputs" && segments[i] != "intermediates" {
+			continue
+		}
 
-	// Walk from the segment just before the file name towards the root and stop
-	// at the first artifact-kind marker directory.
-	for i := len(segments) - 2; i >= 0; i-- {
-		switch segments[i] {
+		module := moduleFromSegments(segments[:i])
+		switch segments[i+1] {
 		case "apk", "bundle":
-			variantSegments := segments[i+1 : len(segments)-1]
+			// The variant is every directory between the kind and the file name.
+			variantSegments := segments[i+2 : len(segments)-1]
 			if len(variantSegments) == 0 {
 				return ArtifactVariant{}, false
 			}
 			return ArtifactVariant{Module: module, Variant: mergeVariantSegments(variantSegments)}, true
 		case "mapping":
 			// The variant is the single directory right after "mapping",
-			// regardless of any deeper "minify..." subdirectory.
-			if i+1 <= len(segments)-2 {
-				return ArtifactVariant{Module: module, Variant: mergeVariantSegments(segments[i+1 : i+2])}, true
+			// ignoring any deeper "minify..." subdirectory.
+			if i+2 <= len(segments)-2 {
+				return ArtifactVariant{Module: module, Variant: segments[i+2]}, true
 			}
 			return ArtifactVariant{}, false
 		}
+		// Some other "outputs" child (e.g. logs), or a directory named "outputs"
+		// higher up the path: keep scanning for the real marker.
 	}
 
 	return ArtifactVariant{}, false
