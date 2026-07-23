@@ -1,11 +1,11 @@
-package gradle
+package mappinglist
 
 import (
 	"reflect"
 	"testing"
 )
 
-func TestDecodeMappingList(t *testing.T) {
+func TestDecode(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
@@ -24,14 +24,14 @@ func TestDecodeMappingList(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := DecodeMappingList(tt.input); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("DecodeMappingList(%q) = %#v, want %#v", tt.input, got, tt.want)
+			if got := Decode(tt.input); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Decode(%q) = %#v, want %#v", tt.input, got, tt.want)
 			}
 		})
 	}
 }
 
-func TestEncodeDecodeMappingListRoundTrip(t *testing.T) {
+func TestEncodeDecodeRoundTrip(t *testing.T) {
 	cases := [][]string{
 		{"a.txt", "b.txt"},
 		{"a.txt", "", "c.txt"},
@@ -41,8 +41,8 @@ func TestEncodeDecodeMappingListRoundTrip(t *testing.T) {
 	}
 
 	for _, paths := range cases {
-		encoded := EncodeMappingList(paths)
-		decoded := DecodeMappingList(encoded)
+		encoded := Encode(paths)
+		decoded := Decode(encoded)
 		if !reflect.DeepEqual(decoded, paths) {
 			t.Errorf("round trip of %#v: encoded %q, decoded %#v", paths, encoded, decoded)
 		}
