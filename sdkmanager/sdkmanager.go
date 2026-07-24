@@ -7,8 +7,8 @@ import (
 
 	"github.com/bitrise-io/go-android/v2/sdk"
 	"github.com/bitrise-io/go-android/v2/sdkcomponent"
-	"github.com/bitrise-io/go-utils/pathutil"
 	"github.com/bitrise-io/go-utils/v2/command"
+	"github.com/bitrise-io/go-utils/v2/pathutil"
 )
 
 // Model ...
@@ -27,7 +27,7 @@ func New(sdk sdk.AndroidSdkInterface, cmdFactory command.Factory) (*Model, error
 	}
 
 	sdkmanagerPath := filepath.Join(cmdlineToolsPath, "sdkmanager")
-	if exist, err := pathutil.IsPathExists(sdkmanagerPath); err != nil {
+	if exist, err := pathutil.NewPathChecker().IsPathExists(sdkmanagerPath); err != nil {
 		return nil, err
 	} else if exist {
 		return &Model{
@@ -38,7 +38,7 @@ func New(sdk sdk.AndroidSdkInterface, cmdFactory command.Factory) (*Model, error
 	}
 
 	legacySdkmanagerPath := filepath.Join(cmdlineToolsPath, "android")
-	if exist, err := pathutil.IsPathExists(legacySdkmanagerPath); err != nil {
+	if exist, err := pathutil.NewPathChecker().IsPathExists(legacySdkmanagerPath); err != nil {
 		return nil, err
 	} else if exist {
 		return &Model{
@@ -66,7 +66,7 @@ func (model Model) IsInstalled(component sdkcomponent.Model) (bool, error) {
 	if indicatorFile != "" {
 		installPth = filepath.Join(installPth, indicatorFile)
 	}
-	return pathutil.IsPathExists(installPth)
+	return pathutil.NewPathChecker().IsPathExists(installPth)
 }
 
 // InstallCommand ...
