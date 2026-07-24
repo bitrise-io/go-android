@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bitrise-io/go-utils/pathutil"
+	"github.com/bitrise-io/go-utils/v2/pathutil"
 	"github.com/hashicorp/go-version"
 )
 
@@ -79,7 +79,7 @@ func validateAndroidSDKRoot(androidSDKRoot string) (string, error) {
 		return "", err
 	}
 
-	if exist, err := pathutil.IsDirExists(evaluatedSDKRoot); err != nil {
+	if exist, err := pathutil.NewPathChecker().IsDirExists(evaluatedSDKRoot); err != nil {
 		return "", err
 	} else if !exist {
 		return "", fmt.Errorf("(%s) is not a valid Android SDK root", evaluatedSDKRoot)
@@ -131,7 +131,7 @@ func (model *Model) LatestBuildToolPath(name string) (string, error) {
 	}
 
 	pth := filepath.Join(buildToolsDir, name)
-	if exist, err := pathutil.IsPathExists(pth); err != nil {
+	if exist, err := pathutil.NewPathChecker().IsPathExists(pth); err != nil {
 		return "", err
 	} else if !exist {
 		return "", fmt.Errorf("tool (%s) not found at: %s", name, buildToolsDir)
@@ -161,7 +161,7 @@ func (model *Model) CmdlineToolsPath() (string, error) {
 		}
 
 		sdkmanagerPath := matches[0]
-		if exists, err := pathutil.IsDirExists(sdkmanagerPath); err != nil {
+		if exists, err := pathutil.NewPathChecker().IsDirExists(sdkmanagerPath); err != nil {
 			warnings = append(warnings, fmt.Sprintf("failed to validate path (%s): %v", sdkmanagerPath, err))
 			continue
 		} else if !exists {
