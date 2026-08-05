@@ -1,36 +1,21 @@
-// Package artifactmap defines the variant-keyed Android artifact map that the
-// Android build steps (gradle-runner, android-build) export and the Google
-// Play Deploy step consumes.
+// Package artifactmap defines the variant-keyed artifact map that the Android
+// build steps export and the Google Play Deploy step consumes: which exported
+// APK/AAB and which mapping.txt belong to the same build variant — something
+// the flat BITRISE_*_PATH outputs cannot express, while Google Play accepts
+// exactly one mapping per version code.
 //
-// The map answers the question the flat BITRISE_*_PATH outputs cannot: which
-// exported APK/AAB and which mapping.txt belong to the same build variant. A
-// multi-variant build produces one mapping file per variant, and Google Play
-// accepts exactly one mapping per version code, so a consumer must be able to
-// pair them by identity instead of guessing by export order.
-//
-// The map is written as a JSON file into the Bitrise deploy directory, next to
-// the exported artifacts, and its path is exported as
-// BITRISE_ANDROID_ARTIFACT_MAP_PATH. All file references inside the map are
-// bare file names relative to the map file's own directory, so the map stays
-// valid when the deploy directory is archived or moved. Use Resolve to turn an
-// entry's file name into a full path.
-//
-// The package intentionally depends only on the standard library so a consumer
-// step can vendor just this package without pulling in the rest of the gradle
-// helpers.
+// Producers write the map as JSON into the deploy directory and export its
+// path as BITRISE_ANDROID_ARTIFACT_MAP_PATH. File references are bare names
+// relative to the map file's directory (see Resolve), so the map survives the
+// directory being archived or moved. The package is stdlib-only so consumers
+// can vendor it alone.
 //
 // # Schema evolution
 //
-// Producers and consumers of the map are separate steps, version-pinned
-// independently in user workflows, so the schema must stay compatible across
-// mixed versions. The rules:
-//
-//   - Additive changes (new fields) keep the version number. Consumers ignore
-//     unknown JSON fields (encoding/json's default), so an older consumer
-//     paired with a newer producer keeps working on the fields it knows.
-//   - The version number bumps ONLY on breaking layout changes, which should
-//     be avoided; Read rejects documents with a newer version than it
-//     understands rather than mis-reading them.
+// Producers and consumers are version-pinned independently in user workflows.
+// Additive fields keep the version number (unknown JSON fields are ignored);
+// the version bumps only on breaking layout changes, and Read rejects
+// documents newer than it understands.
 package artifactmap
 
 import (
@@ -45,48 +30,37 @@ import (
 const Version = 1
 
 // DefaultFileName is the conventional name of the map file inside the deploy
-// directory. The map is regenerated authoritative metadata: producers
-// OVERWRITE any existing file at this name instead of writing a renamed copy
-// next to it. Consumers should still use the exported path rather than
-// assuming the name.
+// directory. Producers overwrite any existing file at this name (the map is
+// regenerated authoritative metadata); consumers should use the exported path
+// rather than assuming the name.
 const DefaultFileName = "android-artifact-map.json"
 
-// EnvKey is the environment variable the producing steps export the map file's
-// path in, and the consuming steps read it from by default.
+// EnvKey is the environment variable producers export the map file's path in
+// and consumers read it from by default.
 const EnvKey = "BITRISE_ANDROID_ARTIFACT_MAP_PATH"
 
-// Map is the top-level document: the artifacts of one build, grouped by
-// variant.
+// Map is the top-level document: one build's artifacts, grouped by variant.
 type Map struct {
-	// Version identifies the schema so future readers can detect
-	// incompatible documents.
 	Version int `json:"version"`
-	// Variants is keyed by the merged Gradle variant name (for example
-	// "demoRelease"). When two modules produce the same variant name, the
-	// colliding keys are disambiguated as "module/variant". Consumers must
-	// treat the key as informational and pair artifacts by file identity.
+	// Variants is keyed by the merged Gradle variant name ("demoRelease");
+	// colliding names across modules are disambiguated as "module/variant".
+	// The key is informational — consumers pair artifacts by file identity.
 	Variants map[string]Entry `json:"variants"`
-	// Unmatched lists exported files whose variant could not be derived
-	// from their build-output path (for example artifacts written to
-	// non-standard locations). They are preserved so no export is silently
-	// unaccounted for.
+	// Unmatched lists exported files whose variant could not be derived from
+	// their build-output path, so no export goes silently unaccounted for.
 	Unmatched Unmatched `json:"unmatched"`
 }
 
-// Entry groups the exported files of a single build variant. All file
-// references are names relative to the map file's directory.
+// Entry groups one variant's exported files, as names relative to the map
+// file's directory.
 type Entry struct {
-	// Module is the Gradle module the variant belongs to (for example
-	// "app"). Empty when it could not be derived.
+	// Module is the Gradle module ("app"); empty when it could not be derived.
 	Module string `json:"module"`
-	// Mapping is the R8/ProGuard mapping file of the variant, empty when
-	// the variant produced none. A variant has at most one mapping file,
-	// mirroring Google Play's one-mapping-per-version-code model.
+	// Mapping is the variant's R8/ProGuard mapping file; empty when none.
 	Mapping string `json:"mapping,omitempty"`
-	// AAB lists the app bundles of the variant (in practice at most one).
+	// AAB lists the variant's app bundles (in practice at most one).
 	AAB []string `json:"aab"`
-	// APK lists the APKs of the variant; ABI/density splits make several
-	// per variant legitimate.
+	// APK lists the variant's APKs (several with ABI/density splits).
 	APK []string `json:"apk"`
 }
 
@@ -97,29 +71,27 @@ type Unmatched struct {
 	Mapping []string `json:"mapping"`
 }
 
-// File pairs a file's location in the deploy directory with the build-output
-// path it was copied from. DeployPath is what ends up referenced in the map
-// (as its base name); SourcePath is what the variant is derived from, because
-// the deploy directory is flat while the Gradle output tree encodes the
-// variant.
+// File pairs a file's deploy-dir location with the build-output path it was
+// copied from: the map references DeployPath's base name, while the variant is
+// derived from SourcePath (the deploy dir is flat; only the Gradle output tree
+// encodes the variant).
 type File struct {
 	DeployPath string
 	SourcePath string
 }
 
 // Build assembles a Map from the files a step exported. Variants are derived
-// from each file's SourcePath; files with unrecognisable paths are collected
-// under Unmatched. When several mapping files resolve to the same variant the
-// last one wins and the case is reported in warnings (one message per
-// overwritten file); warnings is empty on a clean build.
+// from each file's SourcePath; unrecognisable paths land under Unmatched.
+// When several mapping files resolve to the same variant, a file literally
+// named mapping.txt wins, otherwise the last one; every dropped file is
+// reported in warnings.
 func Build(apks, aabs, mappings []File) (Map, []string) {
 	type group struct {
 		variant ArtifactVariant
 		entry   Entry
-		// mappingIsCanonical marks that the current mapping came from a
-		// source file literally named mapping.txt — the shrinker's real
-		// output — which must not be displaced by sibling report files
-		// (usage.txt, seeds.txt, ...) matched by a widened filter.
+		// the current mapping is a file literally named mapping.txt (the
+		// shrinker's real output) and must not be displaced by sibling
+		// report files (usage.txt, seeds.txt, ...) matched by a wide filter
 		mappingIsCanonical bool
 	}
 	groups := map[ArtifactVariant]*group{}
@@ -224,10 +196,9 @@ func (m Map) SortedVariantKeys() []string {
 	return keys
 }
 
-// Resolve turns a file name referenced by the map into a full path, resolving
-// it against the directory of the map file itself (file names in the map are
-// relative to it). mapPath is the path the map was read from; name is an
-// Entry/Unmatched value. An empty name resolves to "".
+// Resolve turns a file name referenced by the map (an Entry/Unmatched value)
+// into a full path against the map file's own directory. An empty name
+// resolves to "".
 func Resolve(mapPath, name string) string {
 	if name == "" {
 		return ""
