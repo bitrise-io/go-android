@@ -18,44 +18,58 @@ type ArtifactVariant struct {
 }
 
 // VariantFromPath reports the build variant encoded in a Gradle build-output
-// path. It reconciles the two directory shapes the Android Gradle Plugin uses:
+// path. It reconciles the directory shapes the Android Gradle Plugin uses:
 // APKs split the variant into flavor and build type
-// (build/outputs/apk/demo/release/), while AABs and mapping files use a single
-// merged directory (build/outputs/bundle/demoRelease/,
-// build/outputs/mapping/demoRelease/). Joining the APK's segments yields the
-// same merged name, so an APK and its mapping resolve to equal ArtifactVariants.
+// (build/outputs/apk/demo/release/), AABs use a single merged directory
+// (build/outputs/bundle/demoRelease/), and mapping files use either the merged
+// directory (build/outputs/mapping/demoRelease/), the merged directory with a
+// deeper "minify..." task subdirectory (intermediates/mapping/demoRelease/
+// minifyDemoReleaseWithR8/), or the ProGuard-era split shape
+// (outputs/mapping/demo/release/). Joining the split segments yields the same
+// merged name, so an app artifact and its mapping resolve to equal
+// ArtifactVariants.
 //
 // It anchors on the "outputs" (or "intermediates") directory and reads the
-// artifact kind that follows it, so a flavor directory that happens to be named
-// "apk"/"bundle"/"mapping" is not mistaken for the kind marker. ok is false when
-// the path is not a recognised output or mapping path.
+// artifact kind that follows it, scanning RIGHT-TO-LEFT so the marker closest
+// to the file wins: a checkout directory that happens to be called "outputs"
+// higher up the path cannot hijack parsing, and a flavor directory that
+// happens to be named "apk"/"bundle"/"mapping" is not mistaken for the kind
+// marker. ok is false when the path is not a recognised output or mapping
+// path.
 func VariantFromPath(path string) (variant ArtifactVariant, ok bool) {
 	segments := strings.Split(filepath.ToSlash(path), "/")
 
-	for i := 0; i+1 < len(segments); i++ {
+	// segments[len-1] is the file name; the marker must sit at least two
+	// levels above it (kind + at least one variant directory in between).
+	for i := len(segments) - 2; i >= 0; i-- {
 		if segments[i] != "outputs" && segments[i] != "intermediates" {
+			continue
+		}
+
+		// The directories between the kind marker and the file name encode
+		// the variant. An empty list means this "marker" has no room for a
+		// variant (e.g. the file itself is named "apk"): not a real marker,
+		// keep scanning left.
+		variantSegments := segments[i+2 : max(i+2, len(segments)-1)]
+		if len(variantSegments) == 0 {
 			continue
 		}
 
 		module := moduleFromSegments(segments[:i])
 		switch segments[i+1] {
 		case "apk", "bundle":
-			// The variant is every directory between the kind and the file name.
-			variantSegments := segments[i+2 : len(segments)-1]
-			if len(variantSegments) == 0 {
-				return ArtifactVariant{}, false
-			}
 			return ArtifactVariant{Module: module, Variant: mergeVariantSegments(variantSegments)}, true
 		case "mapping":
-			// The variant is the single directory right after "mapping",
-			// ignoring any deeper "minify..." subdirectory.
-			if i+2 <= len(segments)-2 {
-				return ArtifactVariant{Module: module, Variant: segments[i+2]}, true
+			// Drop a trailing shrinker-task directory (e.g.
+			// "minifyDemoReleaseWithR8") so both the merged and the
+			// ProGuard-era split layout reduce to the variant directories.
+			if len(variantSegments) > 1 && strings.HasPrefix(variantSegments[len(variantSegments)-1], "minify") {
+				variantSegments = variantSegments[:len(variantSegments)-1]
 			}
-			return ArtifactVariant{}, false
+			return ArtifactVariant{Module: module, Variant: mergeVariantSegments(variantSegments)}, true
 		}
-		// Some other "outputs" child (e.g. logs), or a directory named "outputs"
-		// higher up the path: keep scanning for the real marker.
+		// Some other "outputs" child (e.g. logs): keep scanning for the real
+		// marker.
 	}
 
 	return ArtifactVariant{}, false

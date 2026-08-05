@@ -63,6 +63,45 @@ func TestVariantFromPath(t *testing.T) {
 			want:   ArtifactVariant{},
 			wantOK: false,
 		},
+		{
+			// regression: this used to panic (slice bounds out of range)
+			name:   "file named like the kind marker directly under outputs",
+			path:   "/x/outputs/apk",
+			want:   ArtifactVariant{},
+			wantOK: false,
+		},
+		{
+			name:   "file named bundle directly under intermediates",
+			path:   "/x/intermediates/bundle",
+			want:   ArtifactVariant{},
+			wantOK: false,
+		},
+		{
+			// regression: the checkout's own outputs/mapping/... prefix used to
+			// hijack parsing; the marker closest to the file must win
+			name:   "outputs directory in the checkout prefix does not hijack",
+			path:   "/bitrise/src/outputs/mapping/tools/app/build/outputs/apk/release/app.apk",
+			want:   ArtifactVariant{Module: "app", Variant: "release"},
+			wantOK: true,
+		},
+		{
+			name:   "ProGuard-era split flavor mapping merges like its APK",
+			path:   "/bitrise/src/app/build/outputs/mapping/demo/release/mapping.txt",
+			want:   ArtifactVariant{Module: "app", Variant: "demoRelease"},
+			wantOK: true,
+		},
+		{
+			name:   "split flavor mapping with minify subdir",
+			path:   "/bitrise/src/app/build/intermediates/mapping/demo/release/minifyDemoReleaseWithR8/mapping.txt",
+			want:   ArtifactVariant{Module: "app", Variant: "demoRelease"},
+			wantOK: true,
+		},
+		{
+			name:   "variant directory starting with minify is not stripped when alone",
+			path:   "/bitrise/src/app/build/outputs/mapping/minifyme/mapping.txt",
+			want:   ArtifactVariant{Module: "app", Variant: "minifyme"},
+			wantOK: true,
+		},
 	}
 
 	for _, tt := range tests {

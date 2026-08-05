@@ -18,6 +18,19 @@
 // The package intentionally depends only on the standard library so a consumer
 // step can vendor just this package without pulling in the rest of the gradle
 // helpers.
+//
+// # Schema evolution
+//
+// Producers and consumers of the map are separate steps, version-pinned
+// independently in user workflows, so the schema must stay compatible across
+// mixed versions. The rules:
+//
+//   - Additive changes (new fields) keep the version number. Consumers ignore
+//     unknown JSON fields (encoding/json's default), so an older consumer
+//     paired with a newer producer keeps working on the fields it knows.
+//   - The version number bumps ONLY on breaking layout changes, which should
+//     be avoided; Read rejects documents with a newer version than it
+//     understands rather than mis-reading them.
 package artifactmap
 
 import (
@@ -32,8 +45,10 @@ import (
 const Version = 1
 
 // DefaultFileName is the conventional name of the map file inside the deploy
-// directory. Producers may deviate (e.g. on name collision), consumers must
-// not rely on it and should use the exported path instead.
+// directory. The map is regenerated authoritative metadata: producers
+// OVERWRITE any existing file at this name instead of writing a renamed copy
+// next to it. Consumers should still use the exported path rather than
+// assuming the name.
 const DefaultFileName = "android-artifact-map.json"
 
 // EnvKey is the environment variable the producing steps export the map file's
@@ -101,6 +116,11 @@ func Build(apks, aabs, mappings []File) (Map, []string) {
 	type group struct {
 		variant ArtifactVariant
 		entry   Entry
+		// mappingIsCanonical marks that the current mapping came from a
+		// source file literally named mapping.txt — the shrinker's real
+		// output — which must not be displaced by sibling report files
+		// (usage.txt, seeds.txt, ...) matched by a widened filter.
+		mappingIsCanonical bool
 	}
 	groups := map[ArtifactVariant]*group{}
 	ordered := []*group{} // deterministic iteration for key assignment
@@ -142,12 +162,24 @@ func Build(apks, aabs, mappings []File) (Map, []string) {
 			continue
 		}
 		name := filepath.Base(f.DeployPath)
-		if g.entry.Mapping != "" && g.entry.Mapping != name {
+		canonical := filepath.Base(f.SourcePath) == "mapping.txt"
+		switch {
+		case g.entry.Mapping == "" || g.entry.Mapping == name:
+			// first mapping for the variant (or a re-listing of the same file)
+		case g.mappingIsCanonical && !canonical:
+			// never displace the shrinker's real mapping.txt with a sibling
+			// report file that a widened filter also matched
+			warnings = append(warnings, fmt.Sprintf(
+				"variant %s matched several mapping files: keeping %s (named mapping.txt), dropping %s",
+				g.variant.Variant, g.entry.Mapping, name))
+			continue
+		default:
 			warnings = append(warnings, fmt.Sprintf(
 				"variant %s matched several mapping files: keeping %s, dropping %s",
 				g.variant.Variant, name, g.entry.Mapping))
 		}
 		g.entry.Mapping = name
+		g.mappingIsCanonical = canonical
 	}
 
 	// Key by variant name; disambiguate as module/variant only on collision.

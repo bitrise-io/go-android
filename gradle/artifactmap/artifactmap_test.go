@@ -88,6 +88,42 @@ func TestBuild_UnderivableVariantGoesToUnmatched(t *testing.T) {
 	}
 }
 
+// TestBuild_CanonicalMappingTxtWinsOverReportFiles: R8 writes usage.txt,
+// seeds.txt etc. next to mapping.txt; when a widened filter matches them too,
+// the file literally named mapping.txt must stay the variant's mapping no
+// matter the discovery order.
+func TestBuild_CanonicalMappingTxtWinsOverReportFiles(t *testing.T) {
+	demoMappingDir := "/bitrise/src/app/build/outputs/mapping/demoRelease/"
+	m, warnings := Build(
+		nil,
+		nil,
+		[]File{
+			{DeployPath: deploy("mapping.txt"), SourcePath: demoMappingDir + "mapping.txt"},
+			{DeployPath: deploy("usage.txt"), SourcePath: demoMappingDir + "usage.txt"},
+		},
+	)
+
+	if len(warnings) != 1 {
+		t.Fatalf("expected 1 warning about the dropped report file, got %v", warnings)
+	}
+	if got := m.Variants["demoRelease"].Mapping; got != "mapping.txt" {
+		t.Fatalf("Mapping = %q, want the canonical mapping.txt", got)
+	}
+
+	// same result when the report file is discovered first
+	m, _ = Build(
+		nil,
+		nil,
+		[]File{
+			{DeployPath: deploy("usage.txt"), SourcePath: demoMappingDir + "usage.txt"},
+			{DeployPath: deploy("mapping.txt"), SourcePath: demoMappingDir + "mapping.txt"},
+		},
+	)
+	if got := m.Variants["demoRelease"].Mapping; got != "mapping.txt" {
+		t.Fatalf("Mapping = %q, want the canonical mapping.txt regardless of order", got)
+	}
+}
+
 func TestBuild_DuplicateMappingWarnsAndKeepsLast(t *testing.T) {
 	m, warnings := Build(
 		nil,
