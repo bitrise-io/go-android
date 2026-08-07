@@ -11,6 +11,7 @@ import (
 	"github.com/bitrise-io/go-android/v2/sdk"
 	"github.com/bitrise-io/go-utils/v2/command"
 	"github.com/bitrise-io/go-utils/v2/env"
+	"github.com/bitrise-io/go-utils/v2/pathutil"
 )
 
 var cmdFactory = command.NewFactory(env.NewRepository())
@@ -84,7 +85,7 @@ func getV2PlusSignature(pathParams []string) (string, error) {
 	sdkModel, err := sdk.NewDefaultModel(sdk.Environment{
 		AndroidHome:    os.Getenv("ANDROID_HOME"),
 		AndroidSDKRoot: os.Getenv("ANDROID_SDK_ROOT"),
-	})
+	}, pathutil.NewPathChecker())
 	if err != nil {
 		return "", fmt.Errorf("failed to create sdk model, error: %s", err)
 	}
