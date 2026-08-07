@@ -9,6 +9,7 @@ import (
 
 	"github.com/bitrise-io/go-android/v2/metaparser/bundletool"
 	"github.com/bitrise-io/go-android/v2/metaparser/github"
+	"github.com/bitrise-io/go-utils/v2/log"
 	"github.com/kr/pretty"
 )
 
@@ -30,7 +31,7 @@ func Test_GetAABInfo(t *testing.T) {
 		t.Fatalf("failed to write file, error: %s", err)
 	}
 
-	bt, err := bundletool.New("1.15.0")
+	bt, err := bundletool.New(log.NewLogger(), "1.15.0")
 	if err != nil {
 		t.Fatalf("setup: failed to initialize bundletool, error: %s", err)
 	}
