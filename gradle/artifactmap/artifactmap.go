@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 )
 
 // Version is the schema version this package reads and writes.
@@ -92,19 +93,32 @@ func Label(module, variant string) string {
 	return module + "/" + variant
 }
 
+// mappingRank orders competing mapping files of one variant: a file literally
+// named mapping.txt (the shrinker's real output) outranks sibling report
+// files (usage.txt, seeds.txt, ...) matched by a widened filter, and within
+// equals, the official build/outputs/ copy outranks the intermediates/
+// task-workdir copy AGP writes first. Ties keep the later file.
+func mappingRank(f File) int {
+	rank := 0
+	if filepath.Base(f.SourcePath) == "mapping.txt" {
+		rank += 2
+	}
+	if strings.Contains(filepath.ToSlash(f.SourcePath), "/outputs/") {
+		rank++
+	}
+	return rank
+}
+
 // Build assembles a Map from the files a step exported. Modules and variants
 // are derived from each file's SourcePath; unrecognisable paths land under
-// Unmatched. When several mapping files resolve to the same variant, a file
-// literally named mapping.txt wins, otherwise the last one; every dropped
-// file is reported in warnings.
+// Unmatched. When several mapping files resolve to the same variant, the
+// highest-ranked one wins (see mappingRank); every dropped file is reported
+// in warnings.
 func Build(apks, aabs, mappings []File) (Map, []string) {
 	type group struct {
-		variant ArtifactVariant
-		entry   Entry
-		// the current mapping is a file literally named mapping.txt (the
-		// shrinker's real output) and must not be displaced by sibling
-		// report files (usage.txt, seeds.txt, ...) matched by a wide filter
-		mappingIsCanonical bool
+		variant     ArtifactVariant
+		entry       Entry
+		mappingRank int
 	}
 	groups := map[ArtifactVariant]*group{}
 	var warnings []string
@@ -144,16 +158,16 @@ func Build(apks, aabs, mappings []File) (Map, []string) {
 			continue
 		}
 		name := filepath.Base(f.DeployPath)
-		canonical := filepath.Base(f.SourcePath) == "mapping.txt"
+		rank := mappingRank(f)
 		label := Label(g.variant.Module, g.variant.Variant)
 		switch {
 		case g.entry.Mapping == "" || g.entry.Mapping == name:
 			// first mapping for the variant (or a re-listing of the same file)
-		case g.mappingIsCanonical && !canonical:
-			// never displace the shrinker's real mapping.txt with a sibling
-			// report file that a widened filter also matched
+		case rank < g.mappingRank:
+			// never displace a higher-ranked mapping (the real mapping.txt,
+			// or the official outputs/ copy) with a lower-ranked one
 			warnings = append(warnings, fmt.Sprintf(
-				"variant %s matched several mapping files: keeping %s (named mapping.txt), dropping %s",
+				"variant %s matched several mapping files: keeping %s, dropping %s",
 				label, g.entry.Mapping, name))
 			continue
 		default:
@@ -162,7 +176,7 @@ func Build(apks, aabs, mappings []File) (Map, []string) {
 				label, name, g.entry.Mapping))
 		}
 		g.entry.Mapping = name
-		g.mappingIsCanonical = canonical
+		g.mappingRank = rank
 	}
 
 	modules := map[string]map[string]Entry{}

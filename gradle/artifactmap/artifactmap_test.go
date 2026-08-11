@@ -124,6 +124,63 @@ func TestBuild_CanonicalMappingTxtWinsOverReportFiles(t *testing.T) {
 	}
 }
 
+// TestBuild_OriginalIssueLayout replays the exact customer log from SSW-3065:
+// a single-variant build where three files matched a widened mapping filter —
+// the Compose mapping, the R8 task's intermediates workdir copy, and the
+// official outputs/ copy. The official file must become the variant's mapping
+// regardless of discovery order (the deploy-dir collision renames whichever
+// arrives second), and the Compose mapping must stay visible under unmatched.
+func TestBuild_OriginalIssueLayout(t *testing.T) {
+	const (
+		composeSrc       = "/bitrise/src/app/build/intermediates/compose_mapping/productionRelease/compose-mapping.txt"
+		intermediatesSrc = "/bitrise/src/app/build/intermediates/mapping/productionRelease/minifyProductionReleaseWithR8/mapping.txt"
+		outputsSrc       = "/bitrise/src/app/build/outputs/mapping/productionRelease/mapping.txt"
+		apkSrc           = "/bitrise/src/app/build/outputs/apk/production/release/app-production-release.apk"
+	)
+
+	cases := map[string]struct {
+		mappings []File
+		want     string // deploy name of the outputs-sourced file
+	}{
+		"customer discovery order (intermediates copied first)": {
+			mappings: []File{
+				{DeployPath: deploy("compose-mapping.txt"), SourcePath: composeSrc},
+				{DeployPath: deploy("mapping.txt"), SourcePath: intermediatesSrc},
+				{DeployPath: deploy("mapping20260703072155.txt"), SourcePath: outputsSrc},
+			},
+			want: "mapping20260703072155.txt",
+		},
+		"reversed discovery order (outputs copied first)": {
+			mappings: []File{
+				{DeployPath: deploy("mapping.txt"), SourcePath: outputsSrc},
+				{DeployPath: deploy("mapping20260703072155.txt"), SourcePath: intermediatesSrc},
+				{DeployPath: deploy("compose-mapping.txt"), SourcePath: composeSrc},
+			},
+			want: "mapping.txt",
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			m, _ := Build(
+				[]File{{DeployPath: deploy("app-production-release.apk"), SourcePath: apkSrc}},
+				nil,
+				tc.mappings,
+			)
+			entry := m.Modules["app"]["productionRelease"]
+			if entry.Mapping != tc.want {
+				t.Fatalf("Mapping = %q, want the outputs-sourced %q", entry.Mapping, tc.want)
+			}
+			if !reflect.DeepEqual(entry.APK, []string{"app-production-release.apk"}) {
+				t.Fatalf("APK = %v, want the variant's APK paired", entry.APK)
+			}
+			if want := []string{"compose-mapping.txt"}; !reflect.DeepEqual(m.Unmatched.Mapping, want) {
+				t.Fatalf("Unmatched.Mapping = %v, want %v", m.Unmatched.Mapping, want)
+			}
+		})
+	}
+}
+
 func TestBuild_DuplicateMappingWarnsAndKeepsLast(t *testing.T) {
 	m, warnings := Build(
 		nil,
