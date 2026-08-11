@@ -25,7 +25,7 @@ const (
 
 func deploy(name string) string { return filepath.Join(deployDir, name) }
 
-func TestBuild_GroupsByVariant(t *testing.T) {
+func TestBuild_GroupsByModuleAndVariant(t *testing.T) {
 	m, warnings := Build(
 		[]File{
 			{DeployPath: deploy("app-demo-release.apk"), SourcePath: demoAPKSource},
@@ -44,23 +44,23 @@ func TestBuild_GroupsByVariant(t *testing.T) {
 	if len(warnings) != 0 {
 		t.Fatalf("unexpected warnings: %v", warnings)
 	}
-	want := map[string]Entry{
-		"demoRelease": {
-			Module:  "app",
-			Mapping: "mapping.txt",
-			AAB:     []string{"app-demo-release.aab"},
-			// names are sorted, not discovery-ordered
-			APK: []string{"app-demo-arm64-v8a-release.apk", "app-demo-release.apk"},
-		},
-		"paidRelease": {
-			Module:  "app",
-			Mapping: "mapping-20260805121530.txt",
-			AAB:     []string{},
-			APK:     []string{"app-paid-release.apk"},
+	want := map[string]map[string]Entry{
+		"app": {
+			"demoRelease": {
+				Mapping: "mapping.txt",
+				AAB:     []string{"app-demo-release.aab"},
+				// names are sorted, not discovery-ordered
+				APK: []string{"app-demo-arm64-v8a-release.apk", "app-demo-release.apk"},
+			},
+			"paidRelease": {
+				Mapping: "mapping-20260805121530.txt",
+				AAB:     []string{},
+				APK:     []string{"app-paid-release.apk"},
+			},
 		},
 	}
-	if !reflect.DeepEqual(m.Variants, want) {
-		t.Fatalf("Variants = %+v, want %+v", m.Variants, want)
+	if !reflect.DeepEqual(m.Modules, want) {
+		t.Fatalf("Modules = %+v, want %+v", m.Modules, want)
 	}
 	if m.Version != Version {
 		t.Fatalf("Version = %d, want %d", m.Version, Version)
@@ -80,8 +80,8 @@ func TestBuild_UnderivableVariantGoesToUnmatched(t *testing.T) {
 	if len(warnings) != 0 {
 		t.Fatalf("unexpected warnings: %v", warnings)
 	}
-	if len(m.Variants) != 0 {
-		t.Fatalf("expected no variants, got %+v", m.Variants)
+	if len(m.Modules) != 0 {
+		t.Fatalf("expected no modules, got %+v", m.Modules)
 	}
 	if want := []string{"mapping.txt"}; !reflect.DeepEqual(m.Unmatched.Mapping, want) {
 		t.Fatalf("Unmatched.Mapping = %v, want %v", m.Unmatched.Mapping, want)
@@ -106,7 +106,7 @@ func TestBuild_CanonicalMappingTxtWinsOverReportFiles(t *testing.T) {
 	if len(warnings) != 1 {
 		t.Fatalf("expected 1 warning about the dropped report file, got %v", warnings)
 	}
-	if got := m.Variants["demoRelease"].Mapping; got != "mapping.txt" {
+	if got := m.Modules["app"]["demoRelease"].Mapping; got != "mapping.txt" {
 		t.Fatalf("Mapping = %q, want the canonical mapping.txt", got)
 	}
 
@@ -119,7 +119,7 @@ func TestBuild_CanonicalMappingTxtWinsOverReportFiles(t *testing.T) {
 			{DeployPath: deploy("mapping.txt"), SourcePath: demoMappingDir + "mapping.txt"},
 		},
 	)
-	if got := m.Variants["demoRelease"].Mapping; got != "mapping.txt" {
+	if got := m.Modules["app"]["demoRelease"].Mapping; got != "mapping.txt" {
 		t.Fatalf("Mapping = %q, want the canonical mapping.txt regardless of order", got)
 	}
 }
@@ -137,12 +137,14 @@ func TestBuild_DuplicateMappingWarnsAndKeepsLast(t *testing.T) {
 	if len(warnings) != 1 {
 		t.Fatalf("expected 1 warning, got %v", warnings)
 	}
-	if got := m.Variants["demoRelease"].Mapping; got != "mapping-20260805121599.txt" {
+	if got := m.Modules["app"]["demoRelease"].Mapping; got != "mapping-20260805121599.txt" {
 		t.Fatalf("Mapping = %q, want the last one", got)
 	}
 }
 
-func TestBuild_SameVariantNameAcrossModulesGetsModulePrefixedKeys(t *testing.T) {
+// TestBuild_SameVariantNameAcrossModules: two modules declaring the same
+// variant name must land under their own module keys.
+func TestBuild_SameVariantNameAcrossModules(t *testing.T) {
 	m, _ := Build(
 		[]File{
 			{DeployPath: deploy("app-demo-release.apk"), SourcePath: demoAPKSource},
@@ -155,14 +157,13 @@ func TestBuild_SameVariantNameAcrossModulesGetsModulePrefixedKeys(t *testing.T) 
 		},
 	)
 
-	wantKeys := []string{"app/demoRelease", "wear/demoRelease"}
-	if got := m.SortedVariantKeys(); !reflect.DeepEqual(got, wantKeys) {
-		t.Fatalf("keys = %v, want %v", got, wantKeys)
+	if want := []string{"app", "wear"}; !reflect.DeepEqual(m.SortedModules(), want) {
+		t.Fatalf("modules = %v, want %v", m.SortedModules(), want)
 	}
-	if got := m.Variants["app/demoRelease"].Mapping; got != "mapping.txt" {
+	if got := m.Modules["app"]["demoRelease"].Mapping; got != "mapping.txt" {
 		t.Fatalf("app mapping = %q, want mapping.txt", got)
 	}
-	if got := m.Variants["wear/demoRelease"].Mapping; got != "mapping-20260805121530.txt" {
+	if got := m.Modules["wear"]["demoRelease"].Mapping; got != "mapping-20260805121530.txt" {
 		t.Fatalf("wear mapping = %q, want the renamed file", got)
 	}
 }
@@ -222,12 +223,13 @@ func TestWrite_DocumentShape(t *testing.T) {
 	}
 	want := map[string]any{
 		"version": float64(1),
-		"variants": map[string]any{
-			"demoRelease": map[string]any{
-				"module":  "app",
-				"mapping": "mapping.txt",
-				"aab":     []any{"app-demo-release.aab"},
-				"apk":     []any{"app-demo-release.apk"},
+		"modules": map[string]any{
+			"app": map[string]any{
+				"demoRelease": map[string]any{
+					"mapping": "mapping.txt",
+					"aab":     []any{"app-demo-release.aab"},
+					"apk":     []any{"app-demo-release.apk"},
+				},
 			},
 		},
 		"unmatched": map[string]any{"apk": []any{}, "aab": []any{}, "mapping": []any{}},
@@ -239,7 +241,7 @@ func TestWrite_DocumentShape(t *testing.T) {
 
 func TestRead_RejectsNewerVersion(t *testing.T) {
 	path := filepath.Join(t.TempDir(), DefaultFileName)
-	if err := os.WriteFile(path, []byte(`{"version": 99, "variants": {}}`), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(`{"version": 99, "modules": {}}`), 0644); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := Read(path); err == nil {
@@ -264,5 +266,14 @@ func TestResolve(t *testing.T) {
 	}
 	if got := Resolve(mapPath, ""); got != "" {
 		t.Fatalf("Resolve of empty name = %q, want empty", got)
+	}
+}
+
+func TestLabel(t *testing.T) {
+	if got := Label("app", "demoRelease"); got != "app/demoRelease" {
+		t.Fatalf("Label = %q", got)
+	}
+	if got := Label("", "demoRelease"); got != "demoRelease" {
+		t.Fatalf("Label with empty module = %q", got)
 	}
 }

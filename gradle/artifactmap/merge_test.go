@@ -22,12 +22,14 @@ func TestMerge_DisjointVariantsUnion(t *testing.T) {
 	if len(warnings) != 0 {
 		t.Fatalf("unexpected warnings: %v", warnings)
 	}
-	want := map[string]Entry{
-		"demoRelease": {Module: "app", Mapping: "mapping.txt", AAB: []string{}, APK: []string{"app-demo-release.apk"}},
-		"paidRelease": {Module: "app", Mapping: "mapping-20260805121530.txt", AAB: []string{}, APK: []string{"app-paid-release.apk"}},
+	want := map[string]map[string]Entry{
+		"app": {
+			"demoRelease": {Mapping: "mapping.txt", AAB: []string{}, APK: []string{"app-demo-release.apk"}},
+			"paidRelease": {Mapping: "mapping-20260805121530.txt", AAB: []string{}, APK: []string{"app-paid-release.apk"}},
+		},
 	}
-	if !reflect.DeepEqual(merged.Variants, want) {
-		t.Fatalf("Variants = %+v, want %+v", merged.Variants, want)
+	if !reflect.DeepEqual(merged.Modules, want) {
+		t.Fatalf("Modules = %+v, want %+v", merged.Modules, want)
 	}
 	if merged.Version != Version {
 		t.Fatalf("Version = %d, want %d", merged.Version, Version)
@@ -51,7 +53,7 @@ func TestMerge_RebuiltVariantReplacedWithWarnings(t *testing.T) {
 	if len(warnings) != 2 { // rebuilt APKs + rebuilt mapping
 		t.Fatalf("expected 2 replacement warnings, got %v", warnings)
 	}
-	got := merged.Variants["demoRelease"]
+	got := merged.Modules["app"]["demoRelease"]
 	if !reflect.DeepEqual(got.APK, []string{"app-demo-release-20260805.apk"}) {
 		t.Fatalf("APK = %v, want the overlay's artifact", got.APK)
 	}
@@ -77,7 +79,7 @@ func TestMerge_ApkThenAabRunsCombine(t *testing.T) {
 
 	merged, warnings := Merge(apkRun, aabRun)
 
-	got := merged.Variants["demoRelease"]
+	got := merged.Modules["app"]["demoRelease"]
 	if !reflect.DeepEqual(got.APK, []string{"app-demo-release.apk"}) {
 		t.Fatalf("APK = %v, the first run's APK must survive the merge", got.APK)
 	}
@@ -103,40 +105,47 @@ func TestMerge_IdenticalVariantNoWarning(t *testing.T) {
 	if len(warnings) != 0 {
 		t.Fatalf("identical maps must merge silently, got %v", warnings)
 	}
-	if !reflect.DeepEqual(merged.Variants, m.Variants) {
-		t.Fatalf("Variants = %+v, want unchanged %+v", merged.Variants, m.Variants)
+	if !reflect.DeepEqual(merged.Modules, m.Modules) {
+		t.Fatalf("Modules = %+v, want unchanged %+v", merged.Modules, m.Modules)
 	}
 }
 
-// TestMerge_CrossModuleCollisionRekeys: base has a bare "demoRelease" key from
-// module app; the overlay brings module wear's demoRelease. After the merge
-// both must be reachable under module-disambiguated keys.
-func TestMerge_CrossModuleCollisionRekeys(t *testing.T) {
+// TestMerge_SameVariantNameAcrossModulesStaysSeparate: module app's
+// demoRelease from one step and module wear's demoRelease from another must
+// not be conflated — the exact case the module nesting exists for.
+func TestMerge_SameVariantNameAcrossModulesStaysSeparate(t *testing.T) {
 	base, _ := Build(
 		[]File{{DeployPath: deploy("app-demo-release.apk"), SourcePath: demoAPKSource}},
-		nil, nil,
+		nil,
+		[]File{{DeployPath: deploy("mapping.txt"), SourcePath: demoMappingSource}},
 	)
 	overlay, _ := Build(
 		[]File{{DeployPath: deploy("wear-demo-release.apk"), SourcePath: wearAPKSource}},
-		nil, nil,
+		nil,
+		[]File{{DeployPath: demoMappingRenamed, SourcePath: wearMappingSource}},
 	)
 
 	merged, warnings := Merge(base, overlay)
 
 	if len(warnings) != 0 {
-		t.Fatalf("unexpected warnings: %v", warnings)
+		t.Fatalf("distinct modules must merge silently, got %v", warnings)
 	}
-	wantKeys := []string{"app/demoRelease", "wear/demoRelease"}
-	if got := merged.SortedVariantKeys(); !reflect.DeepEqual(got, wantKeys) {
-		t.Fatalf("keys = %v, want %v", got, wantKeys)
+	if got := merged.Modules["app"]["demoRelease"].Mapping; got != "mapping.txt" {
+		t.Fatalf("app mapping = %q, want mapping.txt", got)
+	}
+	if got := merged.Modules["wear"]["demoRelease"].Mapping; got != "mapping-20260805121530.txt" {
+		t.Fatalf("wear mapping = %q, want the renamed file", got)
+	}
+	if !reflect.DeepEqual(merged.Modules["app"]["demoRelease"].APK, []string{"app-demo-release.apk"}) {
+		t.Fatalf("app APK list was disturbed by the wear merge: %+v", merged.Modules["app"]["demoRelease"].APK)
 	}
 }
 
 func TestMerge_UnmatchedUnionDeduped(t *testing.T) {
-	base := Map{Version: Version, Variants: map[string]Entry{}, Unmatched: Unmatched{
+	base := Map{Version: Version, Modules: map[string]map[string]Entry{}, Unmatched: Unmatched{
 		APK: []string{"stray.apk"}, AAB: []string{}, Mapping: []string{"stray-mapping.txt"},
 	}}
-	overlay := Map{Version: Version, Variants: map[string]Entry{}, Unmatched: Unmatched{
+	overlay := Map{Version: Version, Modules: map[string]map[string]Entry{}, Unmatched: Unmatched{
 		APK: []string{"stray.apk", "another.apk"}, AAB: []string{}, Mapping: []string{},
 	}}
 
@@ -160,7 +169,7 @@ func TestReplaceFile(t *testing.T) {
 	if !m.ReplaceFile("app-demo-release.aab", "app-demo-release-bitrise-signed.aab") {
 		t.Fatal("expected the AAB reference to be replaced")
 	}
-	if got := m.Variants["demoRelease"].AAB; !reflect.DeepEqual(got, []string{"app-demo-release-bitrise-signed.aab"}) {
+	if got := m.Modules["app"]["demoRelease"].AAB; !reflect.DeepEqual(got, []string{"app-demo-release-bitrise-signed.aab"}) {
 		t.Fatalf("AAB = %v, want the signed name", got)
 	}
 	// mapping references are never touched
@@ -173,7 +182,7 @@ func TestReplaceFile(t *testing.T) {
 }
 
 func TestReplaceFile_Unmatched(t *testing.T) {
-	m := Map{Version: Version, Variants: map[string]Entry{}, Unmatched: Unmatched{
+	m := Map{Version: Version, Modules: map[string]map[string]Entry{}, Unmatched: Unmatched{
 		APK: []string{"stray.apk"}, AAB: []string{}, Mapping: []string{},
 	}}
 
