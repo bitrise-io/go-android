@@ -10,8 +10,12 @@ import (
 
 	"github.com/avast/apkparser"
 	"github.com/bitrise-io/go-android/v2/sdk"
-	"github.com/bitrise-io/go-utils/command"
+	"github.com/bitrise-io/go-utils/v2/command"
+	"github.com/bitrise-io/go-utils/v2/env"
+	"github.com/bitrise-io/go-utils/v2/pathutil"
 )
+
+var cmdFactory = command.NewFactory(env.NewRepository())
 
 func GetAPKInfoWithFallback(logger Logger, apkPth string) (Info, error) {
 	parsedInfo, err := GetAPKInfo(apkPth)
@@ -88,7 +92,7 @@ func GetAPKInfoWithAapt(apkPth string) (Info, error) {
 	sdkModel, err := sdk.NewDefaultModel(sdk.Environment{
 		AndroidHome:    os.Getenv("ANDROID_HOME"),
 		AndroidSDKRoot: os.Getenv("ANDROID_SDK_ROOT"),
-	})
+	}, pathutil.NewPathChecker())
 	if err != nil {
 		return Info{}, fmt.Errorf("failed to create sdk model, error: %s", err)
 	}
@@ -98,7 +102,7 @@ func GetAPKInfoWithAapt(apkPth string) (Info, error) {
 		return Info{}, fmt.Errorf("failed to find latest aapt binary, error: %s", err)
 	}
 
-	aaptOut, err := command.New(aaptPth, "dump", "badging", apkPth).RunAndReturnTrimmedCombinedOutput()
+	aaptOut, err := cmdFactory.Create(aaptPth, []string{"dump", "badging", apkPth}, nil).RunAndReturnTrimmedCombinedOutput()
 	if err != nil {
 		return Info{}, fmt.Errorf("failed to get apk infos, output: %s, error: %s", aaptOut, err)
 	}

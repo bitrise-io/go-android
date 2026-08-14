@@ -8,6 +8,7 @@ import (
 	"github.com/bitrise-io/go-android/v2/sdk"
 	"github.com/bitrise-io/go-utils/v2/command"
 	"github.com/bitrise-io/go-utils/v2/env"
+	"github.com/bitrise-io/go-utils/v2/pathutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -69,7 +70,7 @@ func TestNew(t *testing.T) {
 				}
 			}
 
-			sdk, err := sdk.New(sdkRoot)
+			sdk, err := sdk.New(sdkRoot, pathutil.NewPathChecker())
 			if err != nil {
 				t.Fatalf("failed to create sdk: %v", err)
 			}

@@ -6,13 +6,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bitrise-io/go-utils/fileutil"
-	"github.com/bitrise-io/go-utils/pathutil"
+	"github.com/bitrise-io/go-utils/v2/fileutil"
+	"github.com/bitrise-io/go-utils/v2/pathutil"
 	"github.com/stretchr/testify/require"
 )
 
 func TestLatestBuildToolsDir(t *testing.T) {
-	tmpDir, err := pathutil.NormalizedOSTempDirPath("")
+	tmpDir, err := pathutil.NewPathProvider().CreateTempDir("")
 	require.NoError(t, err)
 
 	buildToolsVersions := []string{"25.0.2", "25.0.3", "22.0.4"}
@@ -21,7 +21,7 @@ func TestLatestBuildToolsDir(t *testing.T) {
 		require.NoError(t, os.MkdirAll(buildToolsVersionPth, 0700))
 	}
 
-	sdk, err := New(tmpDir)
+	sdk, err := New(tmpDir, pathutil.NewPathChecker())
 	require.NoError(t, err)
 
 	latestBuildToolsDir, err := sdk.LatestBuildToolsDir()
@@ -30,10 +30,10 @@ func TestLatestBuildToolsDir(t *testing.T) {
 }
 
 func TestNoBuildToolsDir(t *testing.T) {
-	tmpDir, err := pathutil.NormalizedOSTempDirPath("")
+	tmpDir, err := pathutil.NewPathProvider().CreateTempDir("")
 	require.NoError(t, err)
 
-	sdk, err := New(tmpDir)
+	sdk, err := New(tmpDir, pathutil.NewPathChecker())
 	require.NoError(t, err)
 
 	_, err = sdk.LatestBuildToolsDir()
@@ -41,7 +41,7 @@ func TestNoBuildToolsDir(t *testing.T) {
 }
 
 func TestLatestBuildToolPath(t *testing.T) {
-	tmpDir, err := pathutil.NormalizedOSTempDirPath("")
+	tmpDir, err := pathutil.NewPathProvider().CreateTempDir("")
 	require.NoError(t, err)
 
 	buildToolsVersions := []string{"25.0.2", "25.0.3", "22.0.4"}
@@ -52,9 +52,9 @@ func TestLatestBuildToolPath(t *testing.T) {
 
 	latestBuildToolsVersions := filepath.Join(tmpDir, "build-tools", "25.0.3")
 	zipalignPth := filepath.Join(latestBuildToolsVersions, "zipalign")
-	require.NoError(t, fileutil.WriteStringToFile(zipalignPth, ""))
+	require.NoError(t, fileutil.NewFileManager().Write(zipalignPth, "", 0600))
 
-	sdk, err := New(tmpDir)
+	sdk, err := New(tmpDir, pathutil.NewPathChecker())
 	require.NoError(t, err)
 
 	t.Log("zipalign - exist")
@@ -98,6 +98,7 @@ func TestNewDefaultModel(t *testing.T) {
 			},
 			want: &Model{
 				androidHome: androidHome,
+				pathChecker: pathutil.NewPathChecker(),
 			},
 		},
 		{
@@ -108,6 +109,7 @@ func TestNewDefaultModel(t *testing.T) {
 			},
 			want: &Model{
 				androidHome: androidHome,
+				pathChecker: pathutil.NewPathChecker(),
 			},
 		},
 		{
@@ -118,6 +120,7 @@ func TestNewDefaultModel(t *testing.T) {
 			},
 			want: &Model{
 				androidHome: sdkRoot,
+				pathChecker: pathutil.NewPathChecker(),
 			},
 		},
 		{
@@ -137,7 +140,7 @@ func TestNewDefaultModel(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewDefaultModel(tt.envs)
+			got, err := NewDefaultModel(tt.envs, pathutil.NewPathChecker())
 
 			if tt.wantErr {
 				require.Error(t, err)
@@ -211,6 +214,7 @@ func TestModel_CmdlineToolsPath(t *testing.T) {
 
 			model := &Model{
 				androidHome: SDKRoot,
+				pathChecker: pathutil.NewPathChecker(),
 			}
 			want := ""
 			if !tt.wantErr {
