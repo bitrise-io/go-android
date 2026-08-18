@@ -24,8 +24,8 @@ func TestMerge_DisjointVariantsUnion(t *testing.T) {
 	}
 	want := map[string]map[string]Entry{
 		"app": {
-			"demoRelease": {Mapping: "mapping.txt", AAB: []string{}, APK: []string{"app-demo-release.apk"}, AAR: []string{}},
-			"paidRelease": {Mapping: "mapping-20260805121530.txt", AAB: []string{}, APK: []string{"app-paid-release.apk"}, AAR: []string{}},
+			"demoRelease": {Mapping: "mapping.txt", AAB: []string{}, APK: []string{"app-demo-release.apk"}},
+			"paidRelease": {Mapping: "mapping-20260805121530.txt", AAB: []string{}, APK: []string{"app-paid-release.apk"}},
 		},
 	}
 	if !reflect.DeepEqual(merged.Modules, want) {

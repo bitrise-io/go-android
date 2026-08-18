@@ -51,13 +51,11 @@ func TestBuild_GroupsByModuleAndVariant(t *testing.T) {
 				AAB:     []string{"app-demo-release.aab"},
 				// names are sorted, not discovery-ordered
 				APK: []string{"app-demo-arm64-v8a-release.apk", "app-demo-release.apk"},
-				AAR: []string{},
 			},
 			"paidRelease": {
 				Mapping: "mapping-20260805121530.txt",
 				AAB:     []string{},
 				APK:     []string{"app-paid-release.apk"},
-				AAR:     []string{},
 			},
 		},
 	}
@@ -275,16 +273,17 @@ func TestBuild_SourcesRecordProvenance(t *testing.T) {
 	}
 }
 
-// TestBuild_AARs: AGP's standard library layout has no variant directory
-// (outputs/aar/<name>-<variant>.aar), so such AARs stay visible under
-// unmatched; a layout that does encode a variant directory pairs.
+// TestBuild_AARs: AGP's aar layout encodes no variant, so AARs attach to
+// their module — with the same key disambiguation modules get. Files not
+// under build/outputs/aar stay visible in unmatched.
 func TestBuild_AARs(t *testing.T) {
 	m, warnings := Build(
 		nil,
 		nil,
 		[]File{
-			{DeployPath: deploy("data-debug.aar"), SourcePath: "/bitrise/src/feature/data/build/outputs/aar/data-debug.aar"},
-			{DeployPath: deploy("lib-debug.aar"), SourcePath: "/bitrise/src/lib/build/outputs/aar/debug/lib-debug.aar"},
+			{DeployPath: deploy("data-debug.aar"), SourcePath: "/bitrise/src/feature-name-1/data/build/outputs/aar/data-debug.aar"},
+			{DeployPath: deploy("data-debug20260818.aar"), SourcePath: "/bitrise/src/feature-name-2/data/build/outputs/aar/data-debug.aar"},
+			{DeployPath: deploy("stray.aar"), SourcePath: "/bitrise/src/custom-out/stray.aar"},
 		},
 		nil,
 	)
@@ -292,11 +291,15 @@ func TestBuild_AARs(t *testing.T) {
 	if len(warnings) != 0 {
 		t.Fatalf("unexpected warnings: %v", warnings)
 	}
-	if want := []string{"data-debug.aar"}; !reflect.DeepEqual(m.Unmatched.AAR, want) {
-		t.Fatalf("Unmatched.AAR = %v, want %v", m.Unmatched.AAR, want)
+	want := map[string][]string{
+		"feature-name-1/data": {"data-debug.aar"},
+		"feature-name-2/data": {"data-debug20260818.aar"},
 	}
-	if want := []string{"lib-debug.aar"}; !reflect.DeepEqual(m.Modules["lib"]["debug"].AAR, want) {
-		t.Fatalf("lib/debug AAR = %v, want %v", m.Modules["lib"]["debug"].AAR, want)
+	if !reflect.DeepEqual(m.ModuleAARs, want) {
+		t.Fatalf("ModuleAARs = %v, want %v", m.ModuleAARs, want)
+	}
+	if want := []string{"stray.aar"}; !reflect.DeepEqual(m.Unmatched.AAR, want) {
+		t.Fatalf("Unmatched.AAR = %v, want %v", m.Unmatched.AAR, want)
 	}
 }
 
@@ -361,7 +364,6 @@ func TestWrite_DocumentShape(t *testing.T) {
 					"mapping": "mapping.txt",
 					"aab":     []any{"app-demo-release.aab"},
 					"apk":     []any{"app-demo-release.apk"},
-					"aar":     []any{},
 				},
 			},
 		},
