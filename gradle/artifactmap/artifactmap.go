@@ -30,10 +30,9 @@ import (
 const Version = 1
 
 // DefaultFileName is the conventional name of the map file inside the deploy
-// directory. A producer finding an existing map at this name Merges its own
-// entries into it (several build steps in one workflow accumulate a single
-// document); an unreadable existing file is replaced. Consumers should use
-// the exported path rather than assuming the name.
+// directory. A producer finding an existing map at this name Merges into it;
+// an unreadable existing file is replaced. Consumers should use the exported
+// path rather than assuming the name.
 const DefaultFileName = "android-artifact-map.json"
 
 // EnvKey is the environment variable producers export the map file's path in
@@ -94,19 +93,16 @@ func Label(module, variant string) string {
 
 // canonicalMapping reports whether the file is the shrinker's real output — a
 // file literally named mapping.txt. Sibling report files (usage.txt,
-// seeds.txt, ...) matched by a widened filter must never displace it. Only
-// build/outputs/ files compete at all: VariantFromPath leaves every other
-// location (intermediates/ task-workdir copies included) unmatched.
+// seeds.txt, ...) matched by a widened filter must never displace it.
 func canonicalMapping(f File) bool {
 	return filepath.Base(f.SourcePath) == "mapping.txt"
 }
 
 // Build assembles a Map from the files a step exported. Modules and variants
 // are derived from each file's SourcePath; only official build/outputs/ paths
-// are recognised — everything else lands under Unmatched. When several
-// mapping files resolve to the same variant, the canonical mapping.txt wins
-// over report files (see canonicalMapping); every dropped file is reported in
-// warnings.
+// pair, everything else lands under Unmatched. When several mapping files
+// resolve to one variant, the canonical mapping.txt wins and every dropped
+// file is reported in warnings.
 func Build(apks, aabs, mappings []File) (Map, []string) {
 	type group struct {
 		variant          ArtifactVariant
@@ -173,8 +169,7 @@ func Build(apks, aabs, mappings []File) (Map, []string) {
 
 	modules := map[string]map[string]Entry{}
 	for variant, g := range groups {
-		// producers discover files in filesystem-walk order, which is not a
-		// meaningful contract; sort so the document is deterministic
+		// filesystem-walk order is not a contract; sort for determinism
 		sort.Strings(g.entry.APK)
 		sort.Strings(g.entry.AAB)
 		setEntry(modules, variant.Module, variant.Variant, g.entry)
@@ -193,13 +188,10 @@ func setEntry(modules map[string]map[string]Entry, module, variant string, entry
 	modules[module][variant] = entry
 }
 
-// Merge combines the map written by an earlier step run (base) with the map of
-// the current run (overlay), so several producer steps in one workflow
-// accumulate a single document instead of the last one overwriting the rest.
-// Entries are matched by module and variant and merged field-wise: a field the
-// overlay produced replaces the base's (a rebuild — reported in warnings when
-// the values differ), fields the overlay didn't produce keep the base's. An
-// apk-building run and an aab-building run of the same variant therefore
+// Merge combines an earlier step run's map (base) with the current run's
+// (overlay), so several producer steps in one workflow accumulate a single
+// document. Entries are matched by module and variant and merged field-wise
+// (see mergeEntries): an apk-building and an aab-building run of one variant
 // accumulate one complete entry. Unmatched lists are unioned and deduped.
 func Merge(base, overlay Map) (Map, []string) {
 	var warnings []string
@@ -231,10 +223,10 @@ func Merge(base, overlay Map) (Map, []string) {
 	return Map{Version: Version, Modules: modules, Unmatched: unmatched}, warnings
 }
 
-// mergeEntries combines one variant's base and overlay entries field-wise:
-// what the overlay produced wins, what it didn't produce survives from the
-// base. Replacing an earlier value is reported (also when a re-listed value
-// happens to be identical — the noise is not worth an equality check).
+// mergeEntries combines one variant's entries field-wise: what the overlay
+// produced wins, what it didn't produce survives from the base. Every
+// replacement is reported, even a re-listing of identical values — the noise
+// is not worth an equality check.
 func mergeEntries(base, overlay Entry, label string) (Entry, []string) {
 	var warnings []string
 	merged := overlay
@@ -279,11 +271,10 @@ func unionSorted(a, b []string) []string {
 	return union
 }
 
-// ReplaceFile renames a file reference wherever it appears — the variants'
-// APK/AAB lists and the unmatched lists — and reports whether anything was
-// replaced. A step that transforms an artifact in the deploy dir under a new
-// name (e.g. signing) uses it to keep the map pointing at the current file.
-// Mapping references are left alone: artifact transforms don't touch them.
+// ReplaceFile renames a file reference wherever it appears and reports whether
+// anything was replaced. A step that renames an artifact in the deploy dir
+// (signing) uses it to keep the map current. Mapping references are left
+// alone: artifact transforms don't touch them.
 func (m *Map) ReplaceFile(oldName, newName string) bool {
 	replaced := false
 	replaceIn := func(list []string) {
@@ -363,8 +354,7 @@ func Marshal(m Map) ([]byte, error) {
 	return append(data, '\n'), nil
 }
 
-// Write marshals the map and writes it to path. The document is indented so
-// the exported build artifact stays human-readable.
+// Write marshals the map and writes it to path.
 func Write(path string, m Map) error {
 	data, err := Marshal(m)
 	if err != nil {
