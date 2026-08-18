@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 )
 
 // Version is the schema version this package reads and writes.
@@ -49,9 +50,10 @@ type Map struct {
 	// module key is "" when it could not be derived from the build-output
 	// path. Consumers pair artifacts by file identity, not by key.
 	Modules map[string]map[string]Entry `json:"modules"`
-	// Unmatched lists exported files whose module/variant could not be
-	// derived from their build-output path, so no export goes silently
-	// unaccounted for.
+	// Unmatched lists exported files the map cannot attribute: unrecognised
+	// locations, and report files a widened mapping filter dragged in. Files
+	// from Gradle's build/intermediates/ tree are left out of the document
+	// entirely (see Build).
 	Unmatched Unmatched `json:"unmatched"`
 }
 
@@ -92,22 +94,29 @@ func Label(module, variant string) string {
 }
 
 // canonicalMapping reports whether the file is the shrinker's real output — a
-// file literally named mapping.txt. Sibling report files (usage.txt,
-// seeds.txt, ...) matched by a widened filter must never displace it.
+// file literally named mapping.txt. Nothing else (usage.txt, seeds.txt and
+// other report files matched by a widened filter) can be a variant's mapping.
 func canonicalMapping(f File) bool {
 	return filepath.Base(f.SourcePath) == "mapping.txt"
 }
 
+// fromIntermediates reports whether the file comes from Gradle's
+// build/intermediates/ tree — task-workdir duplicates of the official
+// outputs. Build leaves them out of the map entirely.
+func fromIntermediates(f File) bool {
+	return strings.Contains(filepath.ToSlash(f.SourcePath), "/intermediates/")
+}
+
 // Build assembles a Map from the files a step exported. Modules and variants
-// are derived from each file's SourcePath; only official build/outputs/ paths
-// pair, everything else lands under Unmatched. When several mapping files
-// resolve to one variant, the canonical mapping.txt wins and every dropped
-// file is reported in warnings.
+// are derived from each file's SourcePath. Only official build/outputs/ paths
+// pair, and only a file literally named mapping.txt can be a variant's
+// mapping; other exports stay visible under Unmatched — except files from
+// build/intermediates/ (task-workdir duplicates of the outputs), which are
+// left out of the document entirely.
 func Build(apks, aabs, mappings []File) (Map, []string) {
 	type group struct {
-		variant          ArtifactVariant
-		entry            Entry
-		mappingCanonical bool
+		variant ArtifactVariant
+		entry   Entry
 	}
 	groups := map[ArtifactVariant]*group{}
 	var warnings []string
@@ -127,6 +136,9 @@ func Build(apks, aabs, mappings []File) (Map, []string) {
 
 	unmatched := Unmatched{APK: []string{}, AAB: []string{}, Mapping: []string{}}
 	for _, f := range apks {
+		if fromIntermediates(f) {
+			continue
+		}
 		if g, ok := grab(f); ok {
 			g.entry.APK = append(g.entry.APK, filepath.Base(f.DeployPath))
 		} else {
@@ -134,6 +146,9 @@ func Build(apks, aabs, mappings []File) (Map, []string) {
 		}
 	}
 	for _, f := range aabs {
+		if fromIntermediates(f) {
+			continue
+		}
 		if g, ok := grab(f); ok {
 			g.entry.AAB = append(g.entry.AAB, filepath.Base(f.DeployPath))
 		} else {
@@ -141,30 +156,25 @@ func Build(apks, aabs, mappings []File) (Map, []string) {
 		}
 	}
 	for _, f := range mappings {
-		g, ok := grab(f)
-		if !ok {
-			unmatched.Mapping = append(unmatched.Mapping, filepath.Base(f.DeployPath))
+		if fromIntermediates(f) {
 			continue
 		}
 		name := filepath.Base(f.DeployPath)
-		canonical := canonicalMapping(f)
-		label := Label(g.variant.Module, g.variant.Variant)
-		switch {
-		case g.entry.Mapping == "":
-			// first mapping for the variant
-		case g.mappingCanonical && !canonical:
-			// a report file never displaces the real mapping.txt
-			warnings = append(warnings, fmt.Sprintf(
-				"variant %s matched several mapping files: keeping %s, dropping %s",
-				label, g.entry.Mapping, name))
+		if !canonicalMapping(f) {
+			unmatched.Mapping = append(unmatched.Mapping, name)
 			continue
-		default:
+		}
+		g, ok := grab(f)
+		if !ok {
+			unmatched.Mapping = append(unmatched.Mapping, name)
+			continue
+		}
+		if g.entry.Mapping != "" && g.entry.Mapping != name {
 			warnings = append(warnings, fmt.Sprintf(
 				"variant %s matched several mapping files: keeping %s, dropping %s",
-				label, name, g.entry.Mapping))
+				Label(g.variant.Module, g.variant.Variant), name, g.entry.Mapping))
 		}
 		g.entry.Mapping = name
-		g.mappingCanonical = canonical
 	}
 
 	modules := map[string]map[string]Entry{}

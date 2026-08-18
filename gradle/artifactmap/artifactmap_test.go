@@ -88,39 +88,29 @@ func TestBuild_UnderivableVariantGoesToUnmatched(t *testing.T) {
 	}
 }
 
-// TestBuild_CanonicalMappingTxtWinsOverReportFiles: R8 writes usage.txt,
-// seeds.txt etc. next to mapping.txt; when a widened filter matches them too,
-// the file literally named mapping.txt must stay the variant's mapping no
-// matter the discovery order.
-func TestBuild_CanonicalMappingTxtWinsOverReportFiles(t *testing.T) {
+// TestBuild_ReportFilesStayUnmatched: R8 writes usage.txt, seeds.txt etc.
+// next to mapping.txt; when a widened filter matches them too, only the file
+// literally named mapping.txt can be the variant's mapping — report files
+// stay visible under unmatched.
+func TestBuild_ReportFilesStayUnmatched(t *testing.T) {
 	demoMappingDir := "/bitrise/src/app/build/outputs/mapping/demoRelease/"
 	m, warnings := Build(
 		nil,
 		nil,
 		[]File{
-			{DeployPath: deploy("mapping.txt"), SourcePath: demoMappingDir + "mapping.txt"},
 			{DeployPath: deploy("usage.txt"), SourcePath: demoMappingDir + "usage.txt"},
+			{DeployPath: deploy("mapping.txt"), SourcePath: demoMappingDir + "mapping.txt"},
 		},
 	)
 
-	if len(warnings) != 1 {
-		t.Fatalf("expected 1 warning about the dropped report file, got %v", warnings)
+	if len(warnings) != 0 {
+		t.Fatalf("unexpected warnings: %v", warnings)
 	}
 	if got := m.Modules["app"]["demoRelease"].Mapping; got != "mapping.txt" {
 		t.Fatalf("Mapping = %q, want the canonical mapping.txt", got)
 	}
-
-	// same result when the report file is discovered first
-	m, _ = Build(
-		nil,
-		nil,
-		[]File{
-			{DeployPath: deploy("usage.txt"), SourcePath: demoMappingDir + "usage.txt"},
-			{DeployPath: deploy("mapping.txt"), SourcePath: demoMappingDir + "mapping.txt"},
-		},
-	)
-	if got := m.Modules["app"]["demoRelease"].Mapping; got != "mapping.txt" {
-		t.Fatalf("Mapping = %q, want the canonical mapping.txt regardless of order", got)
+	if want := []string{"usage.txt"}; !reflect.DeepEqual(m.Unmatched.Mapping, want) {
+		t.Fatalf("Unmatched.Mapping = %v, want %v", m.Unmatched.Mapping, want)
 	}
 }
 
@@ -129,7 +119,7 @@ func TestBuild_CanonicalMappingTxtWinsOverReportFiles(t *testing.T) {
 // the Compose mapping, the R8 task's intermediates workdir copy, and the
 // official outputs/ copy. Only the official file pairs with the variant,
 // regardless of discovery order (the deploy-dir collision renames whichever
-// arrives second); the other two stay visible under unmatched.
+// arrives second); the two intermediates files are left out of the document.
 func TestBuild_OriginalIssueLayout(t *testing.T) {
 	const (
 		composeSrc       = "/bitrise/src/app/build/intermediates/compose_mapping/productionRelease/compose-mapping.txt"
@@ -139,9 +129,8 @@ func TestBuild_OriginalIssueLayout(t *testing.T) {
 	)
 
 	cases := map[string]struct {
-		mappings      []File
-		want          string   // deploy name of the outputs-sourced file
-		wantUnmatched []string // sorted
+		mappings []File
+		want     string // deploy name of the outputs-sourced file
 	}{
 		"customer discovery order (intermediates copied first)": {
 			mappings: []File{
@@ -149,8 +138,7 @@ func TestBuild_OriginalIssueLayout(t *testing.T) {
 				{DeployPath: deploy("mapping.txt"), SourcePath: intermediatesSrc},
 				{DeployPath: deploy("mapping20260703072155.txt"), SourcePath: outputsSrc},
 			},
-			want:          "mapping20260703072155.txt",
-			wantUnmatched: []string{"compose-mapping.txt", "mapping.txt"},
+			want: "mapping20260703072155.txt",
 		},
 		"reversed discovery order (outputs copied first)": {
 			mappings: []File{
@@ -158,8 +146,7 @@ func TestBuild_OriginalIssueLayout(t *testing.T) {
 				{DeployPath: deploy("mapping20260703072155.txt"), SourcePath: intermediatesSrc},
 				{DeployPath: deploy("compose-mapping.txt"), SourcePath: composeSrc},
 			},
-			want:          "mapping.txt",
-			wantUnmatched: []string{"compose-mapping.txt", "mapping20260703072155.txt"},
+			want: "mapping.txt",
 		},
 	}
 
@@ -180,8 +167,8 @@ func TestBuild_OriginalIssueLayout(t *testing.T) {
 			if !reflect.DeepEqual(entry.APK, []string{"app-production-release.apk"}) {
 				t.Fatalf("APK = %v, want the variant's APK paired", entry.APK)
 			}
-			if !reflect.DeepEqual(m.Unmatched.Mapping, tc.wantUnmatched) {
-				t.Fatalf("Unmatched.Mapping = %v, want %v", m.Unmatched.Mapping, tc.wantUnmatched)
+			if want := []string{}; !reflect.DeepEqual(m.Unmatched.Mapping, want) {
+				t.Fatalf("Unmatched.Mapping = %v, want intermediates files ignored", m.Unmatched.Mapping)
 			}
 		})
 	}
