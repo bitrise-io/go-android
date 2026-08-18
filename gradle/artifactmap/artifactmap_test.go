@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -95,7 +96,7 @@ func TestBuild_UnderivableVariantGoesToUnmatched(t *testing.T) {
 func TestBuild_ReportFilesStayUnmatched(t *testing.T) {
 	demoMappingDir := "/bitrise/src/app/build/outputs/mapping/demoRelease/"
 	m, warnings := Build(
-		nil,
+		[]File{{DeployPath: deploy("app-demo-release.apk"), SourcePath: demoAPKSource}},
 		nil,
 		nil,
 		[]File{
@@ -176,7 +177,7 @@ func TestBuild_OriginalIssueLayout(t *testing.T) {
 
 func TestBuild_DuplicateMappingWarnsAndKeepsLast(t *testing.T) {
 	m, warnings := Build(
-		nil,
+		[]File{{DeployPath: deploy("app-demo-release.apk"), SourcePath: demoAPKSource}},
 		nil,
 		nil,
 		[]File{
@@ -300,6 +301,29 @@ func TestBuild_AARs(t *testing.T) {
 	}
 	if want := []string{"stray.aar"}; !reflect.DeepEqual(m.Unmatched.AAR, want) {
 		t.Fatalf("Unmatched.AAR = %v, want %v", m.Unmatched.AAR, want)
+	}
+}
+
+// TestBuild_PhantomVariantNestingWarns: unexpected nesting under
+// outputs/<kind>/ turns the variant into a phantom key ("demoReleaseExtra"),
+// so the mapping's real variant ends up with no app artifact — the map can't
+// detect the phantom itself, but the orphaned mapping is warned about.
+func TestBuild_PhantomVariantNestingWarns(t *testing.T) {
+	m, warnings := Build(
+		[]File{{DeployPath: deploy("app-demo-release.apk"), SourcePath: "/bitrise/src/app/build/outputs/apk/demo/release/extra/app-demo-release.apk"}},
+		nil,
+		nil,
+		[]File{{DeployPath: deploy("mapping.txt"), SourcePath: demoMappingSource}},
+	)
+
+	if len(warnings) != 1 || !strings.Contains(warnings[0], "app/demoRelease has a mapping but no app artifact") {
+		t.Fatalf("expected the orphaned-mapping warning, got %v", warnings)
+	}
+	if got := m.Modules["app"]["demoReleaseExtra"].APK; !reflect.DeepEqual(got, []string{"app-demo-release.apk"}) {
+		t.Fatalf("APK = %v, want it under the (phantom) derived variant", got)
+	}
+	if got := m.Modules["app"]["demoRelease"].Mapping; got != "mapping.txt" {
+		t.Fatalf("Mapping = %q, want it under the real variant", got)
 	}
 }
 
