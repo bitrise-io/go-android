@@ -162,6 +162,30 @@ func TestMerge_UnmatchedUnionDeduped(t *testing.T) {
 	}
 }
 
+// TestReplaceFile_DoesNotMutateMergeInput: Merge copies entries by value, so
+// slices may be shared with the base document; ReplaceFile must reallocate
+// instead of rewriting the shared backing arrays.
+func TestReplaceFile_DoesNotMutateMergeInput(t *testing.T) {
+	base, _ := Build(
+		[]File{{DeployPath: deploy("app-demo-release.apk"), SourcePath: demoAPKSource}},
+		nil, nil,
+	)
+	merged, _ := Merge(base, Map{Version: Version})
+
+	if !merged.ReplaceFile("app-demo-release.apk", "app-demo-release-bitrise-signed.apk") {
+		t.Fatal("expected the APK reference to be replaced")
+	}
+	if got := base.Modules["app"]["demoRelease"].APK[0]; got != "app-demo-release.apk" {
+		t.Fatalf("base document mutated: APK[0] = %q", got)
+	}
+	if got := merged.Modules["app"]["demoRelease"].APK[0]; got != "app-demo-release-bitrise-signed.apk" {
+		t.Fatalf("merged document not updated: APK[0] = %q", got)
+	}
+	if got := merged.Sources["app-demo-release-bitrise-signed.apk"]; got != demoAPKSource {
+		t.Fatalf("source record did not follow the rename: %q", got)
+	}
+}
+
 func TestReplaceFile(t *testing.T) {
 	m, _ := Build(
 		[]File{{DeployPath: deploy("app-demo-release.apk"), SourcePath: demoAPKSource}},

@@ -248,6 +248,31 @@ func TestBuild_SameBasenameModulesStayDistinct(t *testing.T) {
 	}
 }
 
+// TestBuild_SourcesRecordProvenance: every referenced name — variant files and
+// unmatched alike — carries its build-output path; names the document dropped
+// (a replaced duplicate mapping) and ignored intermediates files do not.
+func TestBuild_SourcesRecordProvenance(t *testing.T) {
+	m, _ := Build(
+		[]File{{DeployPath: deploy("app-demo-release.apk"), SourcePath: demoAPKSource}},
+		nil,
+		[]File{
+			{DeployPath: deploy("mapping.txt"), SourcePath: demoMappingSource},
+			{DeployPath: otherMappingRenamed, SourcePath: demoMappingSource}, // replaces mapping.txt
+			{DeployPath: deploy("stray-mapping.txt"), SourcePath: strayMappingSource},
+			{DeployPath: deploy("compose-mapping.txt"), SourcePath: "/bitrise/src/app/build/intermediates/compose_mapping/demoRelease/compose-mapping.txt"},
+		},
+	)
+
+	want := map[string]string{
+		"app-demo-release.apk":       demoAPKSource,
+		"mapping-20260805121599.txt": demoMappingSource,
+		"stray-mapping.txt":          strayMappingSource,
+	}
+	if !reflect.DeepEqual(m.Sources, want) {
+		t.Fatalf("Sources = %v, want %v", m.Sources, want)
+	}
+}
+
 func TestBuild_EmptyInput(t *testing.T) {
 	m, warnings := Build(nil, nil, nil)
 	if len(warnings) != 0 {
@@ -313,6 +338,11 @@ func TestWrite_DocumentShape(t *testing.T) {
 			},
 		},
 		"unmatched": map[string]any{"apk": []any{}, "aab": []any{}, "mapping": []any{}},
+		"sources": map[string]any{
+			"app-demo-release.apk": demoAPKSource,
+			"app-demo-release.aab": demoAABSource,
+			"mapping.txt":          demoMappingSource,
+		},
 	}
 	if !reflect.DeepEqual(doc, want) {
 		t.Fatalf("document shape changed:\n got %#v\nwant %#v", doc, want)
