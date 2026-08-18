@@ -12,25 +12,25 @@ func TestVariantFromPath(t *testing.T) {
 		{
 			name:   "AAB with merged variant segment",
 			path:   "/bitrise/src/app/build/outputs/bundle/demoRelease/app-demo-release.aab",
-			want:   ArtifactVariant{Module: "app", Variant: "demoRelease"},
+			want:   ArtifactVariant{Module: "app", ModulePath: "/bitrise/src/app", Variant: "demoRelease"},
 			wantOK: true,
 		},
 		{
 			name:   "APK with split flavor and build type segments",
 			path:   "/bitrise/src/app/build/outputs/apk/demo/release/app-demo-release.apk",
-			want:   ArtifactVariant{Module: "app", Variant: "demoRelease"},
+			want:   ArtifactVariant{Module: "app", ModulePath: "/bitrise/src/app", Variant: "demoRelease"},
 			wantOK: true,
 		},
 		{
 			name:   "APK without flavor",
 			path:   "/bitrise/src/app/build/outputs/apk/release/app-release.apk",
-			want:   ArtifactVariant{Module: "app", Variant: "release"},
+			want:   ArtifactVariant{Module: "app", ModulePath: "/bitrise/src/app", Variant: "release"},
 			wantOK: true,
 		},
 		{
 			name:   "mapping under outputs",
 			path:   "/bitrise/src/app/build/outputs/mapping/demoRelease/mapping.txt",
-			want:   ArtifactVariant{Module: "app", Variant: "demoRelease"},
+			want:   ArtifactVariant{Module: "app", ModulePath: "/bitrise/src/app", Variant: "demoRelease"},
 			wantOK: true,
 		},
 		{
@@ -44,19 +44,19 @@ func TestVariantFromPath(t *testing.T) {
 		{
 			name:   "different module stays distinct",
 			path:   "/bitrise/src/feature/build/outputs/apk/release/feature-release.apk",
-			want:   ArtifactVariant{Module: "feature", Variant: "release"},
+			want:   ArtifactVariant{Module: "feature", ModulePath: "/bitrise/src/feature", Variant: "release"},
 			wantOK: true,
 		},
 		{
 			name:   "multi dimension flavor merges consistently with mapping",
 			path:   "/bitrise/src/app/build/outputs/apk/demoFree/release/app.apk",
-			want:   ArtifactVariant{Module: "app", Variant: "demoFreeRelease"},
+			want:   ArtifactVariant{Module: "app", ModulePath: "/bitrise/src/app", Variant: "demoFreeRelease"},
 			wantOK: true,
 		},
 		{
 			name:   "flavor named like the kind marker is not mistaken for it",
 			path:   "/bitrise/src/app/build/outputs/apk/apk/release/app.apk",
-			want:   ArtifactVariant{Module: "app", Variant: "apkRelease"},
+			want:   ArtifactVariant{Module: "app", ModulePath: "/bitrise/src/app", Variant: "apkRelease"},
 			wantOK: true,
 		},
 		{
@@ -83,13 +83,13 @@ func TestVariantFromPath(t *testing.T) {
 			// hijack parsing; the marker closest to the file must win
 			name:   "outputs directory in the checkout prefix does not hijack",
 			path:   "/bitrise/src/outputs/mapping/tools/app/build/outputs/apk/release/app.apk",
-			want:   ArtifactVariant{Module: "app", Variant: "release"},
+			want:   ArtifactVariant{Module: "app", ModulePath: "/bitrise/src/outputs/mapping/tools/app", Variant: "release"},
 			wantOK: true,
 		},
 		{
 			name:   "ProGuard-era split flavor mapping merges like its APK",
 			path:   "/bitrise/src/app/build/outputs/mapping/demo/release/mapping.txt",
-			want:   ArtifactVariant{Module: "app", Variant: "demoRelease"},
+			want:   ArtifactVariant{Module: "app", ModulePath: "/bitrise/src/app", Variant: "demoRelease"},
 			wantOK: true,
 		},
 		{
@@ -97,6 +97,18 @@ func TestVariantFromPath(t *testing.T) {
 			path:   "/bitrise/src/app/build/intermediates/apk/demo/release/app.apk",
 			want:   ArtifactVariant{},
 			wantOK: false,
+		},
+		{
+			name:   "universal APK built from the bundle",
+			path:   "/bitrise/src/app/build/outputs/universal_apk/release/app-release-universal.apk",
+			want:   ArtifactVariant{Module: "app", ModulePath: "/bitrise/src/app", Variant: "release"},
+			wantOK: true,
+		},
+		{
+			name:   "AGP 4-7 apk_from_bundle location",
+			path:   "/bitrise/src/app/build/outputs/apk_from_bundle/release/app-release-universal.apk",
+			want:   ArtifactVariant{Module: "app", ModulePath: "/bitrise/src/app", Variant: "release"},
+			wantOK: true,
 		},
 	}
 

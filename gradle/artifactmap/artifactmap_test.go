@@ -218,6 +218,36 @@ func TestBuild_SameVariantNameAcrossModules(t *testing.T) {
 	}
 }
 
+// TestBuild_SameBasenameModulesStayDistinct: two modules whose directories
+// share a basename (monorepo brandA/app + brandB/app) must not merge into one
+// "app" key — the document keys grow parent directories until unique.
+func TestBuild_SameBasenameModulesStayDistinct(t *testing.T) {
+	m, warnings := Build(
+		[]File{
+			{DeployPath: deploy("brandA.apk"), SourcePath: "/bitrise/src/brandA/app/build/outputs/apk/release/brandA.apk"},
+			{DeployPath: deploy("brandB.apk"), SourcePath: "/bitrise/src/brandB/app/build/outputs/apk/release/brandB.apk"},
+		},
+		nil,
+		[]File{
+			{DeployPath: deploy("mapping.txt"), SourcePath: "/bitrise/src/brandA/app/build/outputs/mapping/release/mapping.txt"},
+			{DeployPath: demoMappingRenamed, SourcePath: "/bitrise/src/brandB/app/build/outputs/mapping/release/mapping.txt"},
+		},
+	)
+
+	if len(warnings) != 0 {
+		t.Fatalf("unexpected warnings: %v", warnings)
+	}
+	if want := []string{"brandA/app", "brandB/app"}; !reflect.DeepEqual(m.SortedModules(), want) {
+		t.Fatalf("modules = %v, want %v", m.SortedModules(), want)
+	}
+	if got := m.Modules["brandA/app"]["release"].Mapping; got != "mapping.txt" {
+		t.Fatalf("brandA mapping = %q, want mapping.txt", got)
+	}
+	if got := m.Modules["brandB/app"]["release"].Mapping; got != "mapping-20260805121530.txt" {
+		t.Fatalf("brandB mapping = %q, want the renamed file", got)
+	}
+}
+
 func TestBuild_EmptyInput(t *testing.T) {
 	m, warnings := Build(nil, nil, nil)
 	if len(warnings) != 0 {
