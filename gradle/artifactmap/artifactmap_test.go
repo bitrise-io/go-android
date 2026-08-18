@@ -35,11 +35,11 @@ func TestBuild_GroupsByModuleAndVariant(t *testing.T) {
 		[]File{
 			{DeployPath: deploy("app-demo-release.aab"), SourcePath: demoAABSource},
 		},
+		nil,
 		[]File{
 			{DeployPath: deploy("mapping.txt"), SourcePath: demoMappingSource},
 			{DeployPath: demoMappingRenamed, SourcePath: paidMappingSource},
-		},
-	)
+		})
 
 	if len(warnings) != 0 {
 		t.Fatalf("unexpected warnings: %v", warnings)
@@ -51,11 +51,13 @@ func TestBuild_GroupsByModuleAndVariant(t *testing.T) {
 				AAB:     []string{"app-demo-release.aab"},
 				// names are sorted, not discovery-ordered
 				APK: []string{"app-demo-arm64-v8a-release.apk", "app-demo-release.apk"},
+				AAR: []string{},
 			},
 			"paidRelease": {
 				Mapping: "mapping-20260805121530.txt",
 				AAB:     []string{},
 				APK:     []string{"app-paid-release.apk"},
+				AAR:     []string{},
 			},
 		},
 	}
@@ -74,8 +76,8 @@ func TestBuild_UnderivableVariantGoesToUnmatched(t *testing.T) {
 	m, warnings := Build(
 		nil,
 		nil,
-		[]File{{DeployPath: deploy("mapping.txt"), SourcePath: strayMappingSource}},
-	)
+		nil,
+		[]File{{DeployPath: deploy("mapping.txt"), SourcePath: strayMappingSource}})
 
 	if len(warnings) != 0 {
 		t.Fatalf("unexpected warnings: %v", warnings)
@@ -97,11 +99,11 @@ func TestBuild_ReportFilesStayUnmatched(t *testing.T) {
 	m, warnings := Build(
 		nil,
 		nil,
+		nil,
 		[]File{
 			{DeployPath: deploy("usage.txt"), SourcePath: demoMappingDir + "usage.txt"},
 			{DeployPath: deploy("mapping.txt"), SourcePath: demoMappingDir + "mapping.txt"},
-		},
-	)
+		})
 
 	if len(warnings) != 0 {
 		t.Fatalf("unexpected warnings: %v", warnings)
@@ -155,8 +157,8 @@ func TestBuild_OriginalIssueLayout(t *testing.T) {
 			m, warnings := Build(
 				[]File{{DeployPath: deploy("app-production-release.apk"), SourcePath: apkSrc}},
 				nil,
-				tc.mappings,
-			)
+				nil,
+				tc.mappings)
 			if len(warnings) != 0 {
 				t.Fatalf("unexpected warnings: %v", warnings)
 			}
@@ -178,11 +180,11 @@ func TestBuild_DuplicateMappingWarnsAndKeepsLast(t *testing.T) {
 	m, warnings := Build(
 		nil,
 		nil,
+		nil,
 		[]File{
 			{DeployPath: deploy("mapping.txt"), SourcePath: demoMappingSource},
 			{DeployPath: otherMappingRenamed, SourcePath: demoMappingSource},
-		},
-	)
+		})
 
 	if len(warnings) != 1 {
 		t.Fatalf("expected 1 warning, got %v", warnings)
@@ -201,11 +203,11 @@ func TestBuild_SameVariantNameAcrossModules(t *testing.T) {
 			{DeployPath: deploy("wear-demo-release.apk"), SourcePath: wearAPKSource},
 		},
 		nil,
+		nil,
 		[]File{
 			{DeployPath: deploy("mapping.txt"), SourcePath: demoMappingSource},
 			{DeployPath: demoMappingRenamed, SourcePath: wearMappingSource},
-		},
-	)
+		})
 
 	if want := []string{"app", "wear"}; !reflect.DeepEqual(m.SortedModules(), want) {
 		t.Fatalf("modules = %v, want %v", m.SortedModules(), want)
@@ -228,11 +230,11 @@ func TestBuild_SameBasenameModulesStayDistinct(t *testing.T) {
 			{DeployPath: deploy("brandB.apk"), SourcePath: "/bitrise/src/brandB/app/build/outputs/apk/release/brandB.apk"},
 		},
 		nil,
+		nil,
 		[]File{
 			{DeployPath: deploy("mapping.txt"), SourcePath: "/bitrise/src/brandA/app/build/outputs/mapping/release/mapping.txt"},
 			{DeployPath: demoMappingRenamed, SourcePath: "/bitrise/src/brandB/app/build/outputs/mapping/release/mapping.txt"},
-		},
-	)
+		})
 
 	if len(warnings) != 0 {
 		t.Fatalf("unexpected warnings: %v", warnings)
@@ -255,13 +257,13 @@ func TestBuild_SourcesRecordProvenance(t *testing.T) {
 	m, _ := Build(
 		[]File{{DeployPath: deploy("app-demo-release.apk"), SourcePath: demoAPKSource}},
 		nil,
+		nil,
 		[]File{
 			{DeployPath: deploy("mapping.txt"), SourcePath: demoMappingSource},
 			{DeployPath: otherMappingRenamed, SourcePath: demoMappingSource}, // replaces mapping.txt
 			{DeployPath: deploy("stray-mapping.txt"), SourcePath: strayMappingSource},
 			{DeployPath: deploy("compose-mapping.txt"), SourcePath: "/bitrise/src/app/build/intermediates/compose_mapping/demoRelease/compose-mapping.txt"},
-		},
-	)
+		})
 
 	want := map[string]string{
 		"app-demo-release.apk":       demoAPKSource,
@@ -273,8 +275,33 @@ func TestBuild_SourcesRecordProvenance(t *testing.T) {
 	}
 }
 
+// TestBuild_AARs: AGP's standard library layout has no variant directory
+// (outputs/aar/<name>-<variant>.aar), so such AARs stay visible under
+// unmatched; a layout that does encode a variant directory pairs.
+func TestBuild_AARs(t *testing.T) {
+	m, warnings := Build(
+		nil,
+		nil,
+		[]File{
+			{DeployPath: deploy("data-debug.aar"), SourcePath: "/bitrise/src/feature/data/build/outputs/aar/data-debug.aar"},
+			{DeployPath: deploy("lib-debug.aar"), SourcePath: "/bitrise/src/lib/build/outputs/aar/debug/lib-debug.aar"},
+		},
+		nil,
+	)
+
+	if len(warnings) != 0 {
+		t.Fatalf("unexpected warnings: %v", warnings)
+	}
+	if want := []string{"data-debug.aar"}; !reflect.DeepEqual(m.Unmatched.AAR, want) {
+		t.Fatalf("Unmatched.AAR = %v, want %v", m.Unmatched.AAR, want)
+	}
+	if want := []string{"lib-debug.aar"}; !reflect.DeepEqual(m.Modules["lib"]["debug"].AAR, want) {
+		t.Fatalf("lib/debug AAR = %v, want %v", m.Modules["lib"]["debug"].AAR, want)
+	}
+}
+
 func TestBuild_EmptyInput(t *testing.T) {
-	m, warnings := Build(nil, nil, nil)
+	m, warnings := Build(nil, nil, nil, nil)
 	if len(warnings) != 0 {
 		t.Fatalf("unexpected warnings: %v", warnings)
 	}
@@ -287,8 +314,8 @@ func TestWriteRead_RoundTrip(t *testing.T) {
 	m, _ := Build(
 		[]File{{DeployPath: deploy("app-demo-release.apk"), SourcePath: demoAPKSource}},
 		[]File{{DeployPath: deploy("app-demo-release.aab"), SourcePath: demoAABSource}},
-		[]File{{DeployPath: deploy("mapping.txt"), SourcePath: demoMappingSource}},
-	)
+		nil,
+		[]File{{DeployPath: deploy("mapping.txt"), SourcePath: demoMappingSource}})
 
 	path := filepath.Join(t.TempDir(), DefaultFileName)
 	if err := Write(path, m); err != nil {
@@ -310,8 +337,8 @@ func TestWrite_DocumentShape(t *testing.T) {
 	m, _ := Build(
 		[]File{{DeployPath: deploy("app-demo-release.apk"), SourcePath: demoAPKSource}},
 		[]File{{DeployPath: deploy("app-demo-release.aab"), SourcePath: demoAABSource}},
-		[]File{{DeployPath: deploy("mapping.txt"), SourcePath: demoMappingSource}},
-	)
+		nil,
+		[]File{{DeployPath: deploy("mapping.txt"), SourcePath: demoMappingSource}})
 
 	path := filepath.Join(t.TempDir(), DefaultFileName)
 	if err := Write(path, m); err != nil {
@@ -334,10 +361,11 @@ func TestWrite_DocumentShape(t *testing.T) {
 					"mapping": "mapping.txt",
 					"aab":     []any{"app-demo-release.aab"},
 					"apk":     []any{"app-demo-release.apk"},
+					"aar":     []any{},
 				},
 			},
 		},
-		"unmatched": map[string]any{"apk": []any{}, "aab": []any{}, "mapping": []any{}},
+		"unmatched": map[string]any{"apk": []any{}, "aab": []any{}, "aar": []any{}, "mapping": []any{}},
 		"sources": map[string]any{
 			"app-demo-release.apk": demoAPKSource,
 			"app-demo-release.aab": demoAABSource,

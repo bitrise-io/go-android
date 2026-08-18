@@ -9,13 +9,13 @@ func TestMerge_DisjointVariantsUnion(t *testing.T) {
 	base, _ := Build(
 		[]File{{DeployPath: deploy("app-demo-release.apk"), SourcePath: demoAPKSource}},
 		nil,
-		[]File{{DeployPath: deploy("mapping.txt"), SourcePath: demoMappingSource}},
-	)
+		nil,
+		[]File{{DeployPath: deploy("mapping.txt"), SourcePath: demoMappingSource}})
 	overlay, _ := Build(
 		[]File{{DeployPath: deploy("app-paid-release.apk"), SourcePath: paidAPKSource}},
 		nil,
-		[]File{{DeployPath: demoMappingRenamed, SourcePath: paidMappingSource}},
-	)
+		nil,
+		[]File{{DeployPath: demoMappingRenamed, SourcePath: paidMappingSource}})
 
 	merged, warnings := Merge(base, overlay)
 
@@ -24,8 +24,8 @@ func TestMerge_DisjointVariantsUnion(t *testing.T) {
 	}
 	want := map[string]map[string]Entry{
 		"app": {
-			"demoRelease": {Mapping: "mapping.txt", AAB: []string{}, APK: []string{"app-demo-release.apk"}},
-			"paidRelease": {Mapping: "mapping-20260805121530.txt", AAB: []string{}, APK: []string{"app-paid-release.apk"}},
+			"demoRelease": {Mapping: "mapping.txt", AAB: []string{}, APK: []string{"app-demo-release.apk"}, AAR: []string{}},
+			"paidRelease": {Mapping: "mapping-20260805121530.txt", AAB: []string{}, APK: []string{"app-paid-release.apk"}, AAR: []string{}},
 		},
 	}
 	if !reflect.DeepEqual(merged.Modules, want) {
@@ -40,13 +40,13 @@ func TestMerge_RebuiltVariantReplacedWithWarnings(t *testing.T) {
 	base, _ := Build(
 		[]File{{DeployPath: deploy("app-demo-release.apk"), SourcePath: demoAPKSource}},
 		nil,
-		[]File{{DeployPath: deploy("mapping.txt"), SourcePath: demoMappingSource}},
-	)
+		nil,
+		[]File{{DeployPath: deploy("mapping.txt"), SourcePath: demoMappingSource}})
 	overlay, _ := Build(
 		[]File{{DeployPath: deploy("app-demo-release-20260805.apk"), SourcePath: demoAPKSource}},
 		nil,
-		[]File{{DeployPath: demoMappingRenamed, SourcePath: demoMappingSource}},
-	)
+		nil,
+		[]File{{DeployPath: demoMappingRenamed, SourcePath: demoMappingSource}})
 
 	merged, warnings := Merge(base, overlay)
 
@@ -69,13 +69,13 @@ func TestMerge_ApkThenAabRunsCombine(t *testing.T) {
 	apkRun, _ := Build(
 		[]File{{DeployPath: deploy("app-demo-release.apk"), SourcePath: demoAPKSource}},
 		nil,
-		[]File{{DeployPath: deploy("mapping.txt"), SourcePath: demoMappingSource}},
-	)
+		nil,
+		[]File{{DeployPath: deploy("mapping.txt"), SourcePath: demoMappingSource}})
 	aabRun, _ := Build(
 		nil,
 		[]File{{DeployPath: deploy("app-demo-release.aab"), SourcePath: demoAABSource}},
-		[]File{{DeployPath: demoMappingRenamed, SourcePath: demoMappingSource}},
-	)
+		nil,
+		[]File{{DeployPath: demoMappingRenamed, SourcePath: demoMappingSource}})
 
 	merged, warnings := Merge(apkRun, aabRun)
 
@@ -100,8 +100,7 @@ func TestMerge_ApkThenAabRunsCombine(t *testing.T) {
 func TestMerge_IdenticalVariantKeepsContent(t *testing.T) {
 	m, _ := Build(
 		[]File{{DeployPath: deploy("app-demo-release.apk"), SourcePath: demoAPKSource}},
-		nil, nil,
-	)
+		nil, nil, nil)
 
 	merged, warnings := Merge(m, m)
 
@@ -120,13 +119,13 @@ func TestMerge_SameVariantNameAcrossModulesStaysSeparate(t *testing.T) {
 	base, _ := Build(
 		[]File{{DeployPath: deploy("app-demo-release.apk"), SourcePath: demoAPKSource}},
 		nil,
-		[]File{{DeployPath: deploy("mapping.txt"), SourcePath: demoMappingSource}},
-	)
+		nil,
+		[]File{{DeployPath: deploy("mapping.txt"), SourcePath: demoMappingSource}})
 	overlay, _ := Build(
 		[]File{{DeployPath: deploy("wear-demo-release.apk"), SourcePath: wearAPKSource}},
 		nil,
-		[]File{{DeployPath: demoMappingRenamed, SourcePath: wearMappingSource}},
-	)
+		nil,
+		[]File{{DeployPath: demoMappingRenamed, SourcePath: wearMappingSource}})
 
 	merged, warnings := Merge(base, overlay)
 
@@ -168,8 +167,7 @@ func TestMerge_UnmatchedUnionDeduped(t *testing.T) {
 func TestReplaceFile_DoesNotMutateMergeInput(t *testing.T) {
 	base, _ := Build(
 		[]File{{DeployPath: deploy("app-demo-release.apk"), SourcePath: demoAPKSource}},
-		nil, nil,
-	)
+		nil, nil, nil)
 	merged, _ := Merge(base, Map{Version: Version})
 
 	if !merged.ReplaceFile("app-demo-release.apk", "app-demo-release-bitrise-signed.apk") {
@@ -190,8 +188,8 @@ func TestReplaceFile(t *testing.T) {
 	m, _ := Build(
 		[]File{{DeployPath: deploy("app-demo-release.apk"), SourcePath: demoAPKSource}},
 		[]File{{DeployPath: deploy("app-demo-release.aab"), SourcePath: demoAABSource}},
-		[]File{{DeployPath: deploy("mapping.txt"), SourcePath: demoMappingSource}},
-	)
+		nil,
+		[]File{{DeployPath: deploy("mapping.txt"), SourcePath: demoMappingSource}})
 
 	if !m.ReplaceFile("app-demo-release.aab", "app-demo-release-bitrise-signed.aab") {
 		t.Fatal("expected the AAB reference to be replaced")
@@ -224,8 +222,7 @@ func TestReplaceFile_Unmatched(t *testing.T) {
 func TestMarshal_MatchesWrite(t *testing.T) {
 	m, _ := Build(
 		[]File{{DeployPath: deploy("app-demo-release.apk"), SourcePath: demoAPKSource}},
-		nil, nil,
-	)
+		nil, nil, nil)
 	data, err := Marshal(m)
 	if err != nil {
 		t.Fatalf("Marshal: %v", err)
