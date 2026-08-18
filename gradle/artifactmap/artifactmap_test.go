@@ -127,9 +127,9 @@ func TestBuild_CanonicalMappingTxtWinsOverReportFiles(t *testing.T) {
 // TestBuild_OriginalIssueLayout replays the exact customer log from SSW-3065:
 // a single-variant build where three files matched a widened mapping filter —
 // the Compose mapping, the R8 task's intermediates workdir copy, and the
-// official outputs/ copy. The official file must become the variant's mapping
+// official outputs/ copy. Only the official file pairs with the variant,
 // regardless of discovery order (the deploy-dir collision renames whichever
-// arrives second), and the Compose mapping must stay visible under unmatched.
+// arrives second); the other two stay visible under unmatched.
 func TestBuild_OriginalIssueLayout(t *testing.T) {
 	const (
 		composeSrc       = "/bitrise/src/app/build/intermediates/compose_mapping/productionRelease/compose-mapping.txt"
@@ -139,8 +139,9 @@ func TestBuild_OriginalIssueLayout(t *testing.T) {
 	)
 
 	cases := map[string]struct {
-		mappings []File
-		want     string // deploy name of the outputs-sourced file
+		mappings      []File
+		want          string   // deploy name of the outputs-sourced file
+		wantUnmatched []string // sorted
 	}{
 		"customer discovery order (intermediates copied first)": {
 			mappings: []File{
@@ -148,7 +149,8 @@ func TestBuild_OriginalIssueLayout(t *testing.T) {
 				{DeployPath: deploy("mapping.txt"), SourcePath: intermediatesSrc},
 				{DeployPath: deploy("mapping20260703072155.txt"), SourcePath: outputsSrc},
 			},
-			want: "mapping20260703072155.txt",
+			want:          "mapping20260703072155.txt",
+			wantUnmatched: []string{"compose-mapping.txt", "mapping.txt"},
 		},
 		"reversed discovery order (outputs copied first)": {
 			mappings: []File{
@@ -156,17 +158,21 @@ func TestBuild_OriginalIssueLayout(t *testing.T) {
 				{DeployPath: deploy("mapping20260703072155.txt"), SourcePath: intermediatesSrc},
 				{DeployPath: deploy("compose-mapping.txt"), SourcePath: composeSrc},
 			},
-			want: "mapping.txt",
+			want:          "mapping.txt",
+			wantUnmatched: []string{"compose-mapping.txt", "mapping20260703072155.txt"},
 		},
 	}
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			m, _ := Build(
+			m, warnings := Build(
 				[]File{{DeployPath: deploy("app-production-release.apk"), SourcePath: apkSrc}},
 				nil,
 				tc.mappings,
 			)
+			if len(warnings) != 0 {
+				t.Fatalf("unexpected warnings: %v", warnings)
+			}
 			entry := m.Modules["app"]["productionRelease"]
 			if entry.Mapping != tc.want {
 				t.Fatalf("Mapping = %q, want the outputs-sourced %q", entry.Mapping, tc.want)
@@ -174,8 +180,8 @@ func TestBuild_OriginalIssueLayout(t *testing.T) {
 			if !reflect.DeepEqual(entry.APK, []string{"app-production-release.apk"}) {
 				t.Fatalf("APK = %v, want the variant's APK paired", entry.APK)
 			}
-			if want := []string{"compose-mapping.txt"}; !reflect.DeepEqual(m.Unmatched.Mapping, want) {
-				t.Fatalf("Unmatched.Mapping = %v, want %v", m.Unmatched.Mapping, want)
+			if !reflect.DeepEqual(m.Unmatched.Mapping, tc.wantUnmatched) {
+				t.Fatalf("Unmatched.Mapping = %v, want %v", m.Unmatched.Mapping, tc.wantUnmatched)
 			}
 		})
 	}

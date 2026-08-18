@@ -34,10 +34,12 @@ func TestVariantFromPath(t *testing.T) {
 			wantOK: true,
 		},
 		{
-			name:   "mapping under intermediates with minify subdir",
+			// only official build/outputs/ paths pair; task-workdir copies
+			// stay unmatched so they can never displace the outputs copy
+			name:   "mapping under intermediates is not recognised",
 			path:   "/bitrise/src/app/build/intermediates/mapping/productionRelease/minifyProductionReleaseWithR8/mapping.txt",
-			want:   ArtifactVariant{Module: "app", Variant: "productionRelease"},
-			wantOK: true,
+			want:   ArtifactVariant{},
+			wantOK: false,
 		},
 		{
 			name:   "different module stays distinct",
@@ -91,16 +93,10 @@ func TestVariantFromPath(t *testing.T) {
 			wantOK: true,
 		},
 		{
-			name:   "split flavor mapping with minify subdir",
-			path:   "/bitrise/src/app/build/intermediates/mapping/demo/release/minifyDemoReleaseWithR8/mapping.txt",
-			want:   ArtifactVariant{Module: "app", Variant: "demoRelease"},
-			wantOK: true,
-		},
-		{
-			name:   "variant directory starting with minify is not stripped when alone",
-			path:   "/bitrise/src/app/build/outputs/mapping/minifyme/mapping.txt",
-			want:   ArtifactVariant{Module: "app", Variant: "minifyme"},
-			wantOK: true,
+			name:   "APK under intermediates is not recognised",
+			path:   "/bitrise/src/app/build/intermediates/apk/demo/release/app.apk",
+			want:   ArtifactVariant{},
+			wantOK: false,
 		},
 	}
 

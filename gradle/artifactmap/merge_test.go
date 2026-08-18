@@ -94,7 +94,10 @@ func TestMerge_ApkThenAabRunsCombine(t *testing.T) {
 	}
 }
 
-func TestMerge_IdenticalVariantNoWarning(t *testing.T) {
+// TestMerge_IdenticalVariantKeepsContent: re-merging the same document must
+// not lose or duplicate anything. A re-listed APK set does warn — the merge
+// deliberately doesn't compare slice contents to stay simple.
+func TestMerge_IdenticalVariantKeepsContent(t *testing.T) {
 	m, _ := Build(
 		[]File{{DeployPath: deploy("app-demo-release.apk"), SourcePath: demoAPKSource}},
 		nil, nil,
@@ -102,8 +105,8 @@ func TestMerge_IdenticalVariantNoWarning(t *testing.T) {
 
 	merged, warnings := Merge(m, m)
 
-	if len(warnings) != 0 {
-		t.Fatalf("identical maps must merge silently, got %v", warnings)
+	if len(warnings) != 1 {
+		t.Fatalf("expected 1 re-listing warning, got %v", warnings)
 	}
 	if !reflect.DeepEqual(merged.Modules, m.Modules) {
 		t.Fatalf("Modules = %+v, want unchanged %+v", merged.Modules, m.Modules)
