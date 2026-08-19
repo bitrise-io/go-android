@@ -274,16 +274,20 @@ func TestBuild_SourcesRecordProvenance(t *testing.T) {
 	}
 }
 
-// TestBuild_AARs: AGP's aar layout encodes no variant, so AARs attach to
-// their module — with the same key disambiguation modules get. Files not
-// under build/outputs/aar stay visible in unmatched.
+// TestBuild_AARs: a library archive is attributed to its module AND variant.
+// AGP keeps every variant's archive in one outputs/aar/ directory and encodes
+// the variant in the file name, so the name is what gets decoded. Archives with
+// a customised base name, and files outside build/outputs/aar, stay visible in
+// unmatched.
 func TestBuild_AARs(t *testing.T) {
 	m, warnings := Build(
 		nil,
 		nil,
 		[]File{
+			{DeployPath: deploy("data-free-release.aar"), SourcePath: "/bitrise/src/feature-name-1/data/build/outputs/aar/data-free-release.aar"},
 			{DeployPath: deploy("data-debug.aar"), SourcePath: "/bitrise/src/feature-name-1/data/build/outputs/aar/data-debug.aar"},
-			{DeployPath: deploy("data-debug20260818.aar"), SourcePath: "/bitrise/src/feature-name-2/data/build/outputs/aar/data-debug.aar"},
+			{DeployPath: deploy("data-debug-20260818.aar"), SourcePath: "/bitrise/src/feature-name-2/data/build/outputs/aar/data-debug.aar"},
+			{DeployPath: deploy("mylib-1.0-release.aar"), SourcePath: "/bitrise/src/mylib/build/outputs/aar/mylib-1.0-release.aar"},
 			{DeployPath: deploy("stray.aar"), SourcePath: "/bitrise/src/custom-out/stray.aar"},
 		},
 		nil,
@@ -292,15 +296,52 @@ func TestBuild_AARs(t *testing.T) {
 	if len(warnings) != 0 {
 		t.Fatalf("unexpected warnings: %v", warnings)
 	}
-	want := map[string][]string{
-		"feature-name-1/data": {"data-debug.aar"},
-		"feature-name-2/data": {"data-debug20260818.aar"},
+	want := map[string]map[string]Entry{
+		"feature-name-1/data": {
+			"freeRelease": {AAB: []string{}, APK: []string{}, AAR: []string{"data-free-release.aar"}},
+			"debug":       {AAB: []string{}, APK: []string{}, AAR: []string{"data-debug.aar"}},
+		},
+		"feature-name-2/data": {
+			"debug": {AAB: []string{}, APK: []string{}, AAR: []string{"data-debug-20260818.aar"}},
+		},
 	}
-	if !reflect.DeepEqual(m.ModuleAARs, want) {
-		t.Fatalf("ModuleAARs = %v, want %v", m.ModuleAARs, want)
+	if !reflect.DeepEqual(m.Modules, want) {
+		t.Fatalf("Modules = %+v, want %+v", m.Modules, want)
 	}
-	if want := []string{"stray.aar"}; !reflect.DeepEqual(m.Unmatched.AAR, want) {
+	// mylib-1.0-release.aar: the base name is not the module directory's name,
+	// so where the name ends and the variant begins is unknowable
+	if want := []string{"mylib-1.0-release.aar", "stray.aar"}; !reflect.DeepEqual(m.Unmatched.AAR, want) {
 		t.Fatalf("Unmatched.AAR = %v, want %v", m.Unmatched.AAR, want)
+	}
+}
+
+// TestBuild_AARPairsWithItsOwnMapping is the library counterpart of the
+// load-bearing app guarantee: a self-minifying library writes its mapping to
+// outputs/mapping/<variant>/, so each flavor's archive must end up next to the
+// mapping built for that same flavor.
+func TestBuild_AARPairsWithItsOwnMapping(t *testing.T) {
+	m, warnings := Build(
+		nil,
+		nil,
+		[]File{
+			{DeployPath: deploy("data-free-release.aar"), SourcePath: "/bitrise/src/feature/data/build/outputs/aar/data-free-release.aar"},
+			{DeployPath: deploy("data-paid-release.aar"), SourcePath: "/bitrise/src/feature/data/build/outputs/aar/data-paid-release.aar"},
+		},
+		[]File{
+			{DeployPath: deploy("mapping.txt"), SourcePath: "/bitrise/src/feature/data/build/outputs/mapping/freeRelease/mapping.txt"},
+			{DeployPath: deploy("mapping-20260819.txt"), SourcePath: "/bitrise/src/feature/data/build/outputs/mapping/paidRelease/mapping.txt"},
+		},
+	)
+
+	if len(warnings) != 0 {
+		t.Fatalf("unexpected warnings: %v", warnings)
+	}
+	want := map[string]Entry{
+		"freeRelease": {Mapping: "mapping.txt", AAB: []string{}, APK: []string{}, AAR: []string{"data-free-release.aar"}},
+		"paidRelease": {Mapping: "mapping-20260819.txt", AAB: []string{}, APK: []string{}, AAR: []string{"data-paid-release.aar"}},
+	}
+	if !reflect.DeepEqual(m.Modules["data"], want) {
+		t.Fatalf("Modules[data] = %+v, want %+v", m.Modules["data"], want)
 	}
 }
 
@@ -316,7 +357,7 @@ func TestBuild_PhantomVariantNestingWarns(t *testing.T) {
 		[]File{{DeployPath: deploy("mapping.txt"), SourcePath: demoMappingSource}},
 	)
 
-	if len(warnings) != 1 || !strings.Contains(warnings[0], "app/demoRelease has a mapping but no app artifact") {
+	if len(warnings) != 1 || !strings.Contains(warnings[0], "app/demoRelease has a mapping but no artifact") {
 		t.Fatalf("expected the orphaned-mapping warning, got %v", warnings)
 	}
 	if got := m.Modules["app"]["demoReleaseExtra"].APK; !reflect.DeepEqual(got, []string{"app-demo-release.apk"}) {
@@ -400,6 +441,57 @@ func TestWrite_DocumentShape(t *testing.T) {
 	}
 	if !reflect.DeepEqual(doc, want) {
 		t.Fatalf("document shape changed:\n got %#v\nwant %#v", doc, want)
+	}
+}
+
+// TestWrite_LibraryDocumentShape locks the library-module shape: the aar list
+// appears in a library variant's entry, while an app document keeps the exact
+// shape it had before AARs joined the entries (see TestWrite_DocumentShape —
+// the field is omitted when empty).
+func TestWrite_LibraryDocumentShape(t *testing.T) {
+	const (
+		aarSource     = "/bitrise/src/feature/data/build/outputs/aar/data-free-release.aar"
+		mappingSource = "/bitrise/src/feature/data/build/outputs/mapping/freeRelease/mapping.txt"
+	)
+	m, _ := Build(
+		nil,
+		nil,
+		[]File{{DeployPath: deploy("data-free-release.aar"), SourcePath: aarSource}},
+		[]File{{DeployPath: deploy("mapping.txt"), SourcePath: mappingSource}})
+
+	path := filepath.Join(t.TempDir(), DefaultFileName)
+	if err := Write(path, m); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read back: %v", err)
+	}
+
+	var doc map[string]any
+	if err := json.Unmarshal(data, &doc); err != nil {
+		t.Fatalf("written document is not valid JSON: %v", err)
+	}
+	want := map[string]any{
+		"version": float64(1),
+		"modules": map[string]any{
+			"data": map[string]any{
+				"freeRelease": map[string]any{
+					"mapping": "mapping.txt",
+					"aab":     []any{},
+					"apk":     []any{},
+					"aar":     []any{"data-free-release.aar"},
+				},
+			},
+		},
+		"unmatched": map[string]any{"apk": []any{}, "aab": []any{}, "aar": []any{}, "mapping": []any{}},
+		"sources": map[string]any{
+			"data-free-release.aar": aarSource,
+			"mapping.txt":           mappingSource,
+		},
+	}
+	if !reflect.DeepEqual(doc, want) {
+		t.Fatalf("library document shape changed:\n got %#v\nwant %#v", doc, want)
 	}
 }
 
