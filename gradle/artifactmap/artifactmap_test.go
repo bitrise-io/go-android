@@ -413,6 +413,84 @@ func TestRead_RejectsNewerVersion(t *testing.T) {
 	}
 }
 
+// TestBuild_ModuleNamedIntermediatesIsNotDropped guards the intermediates rule's
+// anchor: only Gradle's build/intermediates/ tree is task-workdir noise, not a
+// module or checkout directory that happens to carry the name.
+func TestBuild_ModuleNamedIntermediatesIsNotDropped(t *testing.T) {
+	const (
+		apkSource     = "/bitrise/src/intermediates/build/outputs/apk/demo/release/app-demo-release.apk"
+		mappingSource = "/bitrise/src/intermediates/build/outputs/mapping/demoRelease/mapping.txt"
+	)
+	m, warnings := Build(
+		[]File{{DeployPath: deploy("app-demo-release.apk"), SourcePath: apkSource}},
+		nil,
+		nil,
+		[]File{{DeployPath: deploy("mapping.txt"), SourcePath: mappingSource}})
+
+	if len(warnings) != 0 {
+		t.Fatalf("unexpected warnings: %v", warnings)
+	}
+	want := map[string]map[string]Entry{
+		"intermediates": {
+			"demoRelease": {Mapping: "mapping.txt", AAB: []string{}, APK: []string{"app-demo-release.apk"}},
+		},
+	}
+	if !reflect.DeepEqual(m.Modules, want) {
+		t.Fatalf("Modules = %+v, want %+v", m.Modules, want)
+	}
+}
+
+// TestRead_NormalizesAbsentLists keeps null out of consumers' way: a foreign
+// same-version document may omit the artifact lists, and jq's .apk[] errors on
+// null.
+func TestRead_NormalizesAbsentLists(t *testing.T) {
+	path := filepath.Join(t.TempDir(), DefaultFileName)
+	document := `{"version": 1, "modules": {"app": {"demoRelease": {"mapping": "mapping.txt"}}}}`
+	if err := os.WriteFile(path, []byte(document), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	m, err := Read(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry := m.Modules["app"]["demoRelease"]
+	if entry.APK == nil || entry.AAB == nil {
+		t.Fatalf("entry lists = %+v, want empty slices, not nil", entry)
+	}
+	if m.Unmatched.APK == nil || m.Unmatched.AAB == nil || m.Unmatched.AAR == nil || m.Unmatched.Mapping == nil {
+		t.Fatalf("unmatched lists = %+v, want empty slices, not nil", m.Unmatched)
+	}
+
+	// a re-written document must then be null-free too
+	out := filepath.Join(t.TempDir(), DefaultFileName)
+	if err := Write(out, m); err != nil {
+		t.Fatal(err)
+	}
+	content, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(content), "null") {
+		t.Fatalf("re-written document contains null:\n%s", content)
+	}
+}
+
+func TestRead_MissingModulesMapIsUsable(t *testing.T) {
+	path := filepath.Join(t.TempDir(), DefaultFileName)
+	if err := os.WriteFile(path, []byte(`{"version": 1}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	m, err := Read(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.Modules == nil {
+		t.Fatal("Modules = nil, want an empty map callers can range over and assign into")
+	}
+	m.Modules["app"] = map[string]Entry{"demoRelease": {}}
+}
+
 func TestRead_RejectsForeignJSON(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "something.json")
 	if err := os.WriteFile(path, []byte(`{"name": "not an artifact map"}`), 0644); err != nil {

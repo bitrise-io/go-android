@@ -99,15 +99,21 @@ func TestVariantFromPath(t *testing.T) {
 			wantOK: false,
 		},
 		{
-			name:   "universal APK built from the bundle",
+			name:   "universal APK built from the bundle (AGP 7)",
 			path:   "/bitrise/src/app/build/outputs/universal_apk/release/app-release-universal.apk",
 			want:   ArtifactVariant{Module: "app", ModulePath: "/bitrise/src/app", Variant: "release"},
 			wantOK: true,
 		},
 		{
-			name:   "AGP 4-7 apk_from_bundle location",
-			path:   "/bitrise/src/app/build/outputs/apk_from_bundle/release/app-release-universal.apk",
-			want:   ArtifactVariant{Module: "app", ModulePath: "/bitrise/src/app", Variant: "release"},
+			name:   "non-ASCII flavor keeps its rune intact",
+			path:   "/bitrise/src/app/build/outputs/apk/ünnep/release/app.apk",
+			want:   ArtifactVariant{Module: "app", ModulePath: "/bitrise/src/app", Variant: "ünnepRelease"},
+			wantOK: true,
+		},
+		{
+			name:   "non-ASCII build type is capitalized as a rune",
+			path:   "/bitrise/src/app/build/outputs/apk/demo/ürelease/app.apk",
+			want:   ArtifactVariant{Module: "app", ModulePath: "/bitrise/src/app", Variant: "demoÜrelease"},
 			wantOK: true,
 		},
 	}

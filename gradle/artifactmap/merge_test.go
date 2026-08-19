@@ -2,6 +2,7 @@ package artifactmap
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -65,6 +66,64 @@ func TestMerge_RebuiltVariantReplacedWithWarnings(t *testing.T) {
 // TestMerge_ApkThenAabRunsCombine: the canonical two-step workflow — one run
 // builds the variant's APK, a later run its AAB. The merged entry must carry
 // both; the second run must not wipe the first's artifacts.
+// TestMerge_RebuiltAppKeepsMappingWithWarning covers the pairing that silently
+// goes stale: a second step rebuilds the variant's APK but exports no mapping
+// (minification off, or a filter that no longer matches), so the retained
+// mapping belongs to the earlier run's binary. The reference is kept — a
+// probably-right mapping beats none — but the risk is named.
+func TestMerge_RebuiltAppKeepsMappingWithWarning(t *testing.T) {
+	base, _ := Build(
+		[]File{{DeployPath: deploy("app-demo-release.apk"), SourcePath: demoAPKSource}},
+		nil,
+		nil,
+		[]File{{DeployPath: deploy("mapping.txt"), SourcePath: demoMappingSource}})
+	overlay, _ := Build(
+		[]File{{DeployPath: deploy("app-demo-release-20260805.apk"), SourcePath: demoAPKSource}},
+		nil,
+		nil,
+		nil)
+
+	merged, warnings := Merge(base, overlay)
+
+	got := merged.Modules["app"]["demoRelease"]
+	if got.Mapping != "mapping.txt" {
+		t.Fatalf("Mapping = %q, want the retained mapping.txt", got.Mapping)
+	}
+	var stale string
+	for _, w := range warnings {
+		if strings.Contains(w, "may be stale") {
+			stale = w
+		}
+	}
+	if stale == "" {
+		t.Fatalf("expected a stale-mapping warning, got %v", warnings)
+	}
+	if !strings.Contains(stale, "mapping.txt") || !strings.Contains(stale, "app/demoRelease") {
+		t.Fatalf("warning %q should name the variant and the mapping file", stale)
+	}
+}
+
+func TestMerge_MappingKeptWithoutRebuildStaysSilent(t *testing.T) {
+	base, _ := Build(
+		nil,
+		nil,
+		nil,
+		[]File{{DeployPath: deploy("mapping.txt"), SourcePath: demoMappingSource}})
+	overlay, _ := Build(
+		[]File{{DeployPath: deploy("app-demo-release.apk"), SourcePath: demoAPKSource}},
+		nil,
+		nil,
+		nil)
+
+	_, warnings := Merge(base, overlay)
+
+	for _, w := range warnings {
+		if strings.Contains(w, "may be stale") {
+			t.Fatalf("first-time pairing must not warn about staleness: %v", warnings)
+		}
+	}
+}
+
 func TestMerge_ApkThenAabRunsCombine(t *testing.T) {
 	apkRun, _ := Build(
 		[]File{{DeployPath: deploy("app-demo-release.apk"), SourcePath: demoAPKSource}},
