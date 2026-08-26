@@ -7,8 +7,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/bitrise-io/go-utils/pretty"
 	"github.com/bitrise-io/go-utils/v2/log"
+	"github.com/bitrise-io/go-utils/v2/pretty"
 )
 
 const universalSplitParam = "universal"

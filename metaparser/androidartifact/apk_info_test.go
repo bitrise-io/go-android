@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/bitrise-io/go-android/v2/metaparser/github"
+	"github.com/bitrise-io/go-utils/v2/mocks"
+	"github.com/stretchr/testify/mock"
 )
 
 const testArtifactAndroidManifest string = `<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:versionCode="1" android:versionName="1.0" package="com.example.birmachera.myapplication">
@@ -21,8 +23,34 @@ const testArtifactAndroidManifest string = `<manifest xmlns:android="http://sche
 	</application>
 </manifest>`
 
+// fakeAaptDumpBadgingOutput is what `aapt dump badging` would print for the
+// "apk with unicode app name" fixture; used to exercise the aapt fallback path
+// without needing an installed Android SDK.
+const fakeAaptDumpBadgingOutput = `package: name='com.example.myapplicationUnicode' versionCode='1' versionName='1.0'
+sdkVersion:'33'
+application-label:'My Application Unicode 🤪'
+application: label='My Application Unicode 🤪' icon='res/mipmap-mdpi-v4/ic_launcher.png'`
+
+// fakeSDKLocator satisfies SDKLocator without requiring an installed Android SDK.
+type fakeSDKLocator struct {
+	path string
+	err  error
+}
+
+func (f fakeSDKLocator) LatestBuildToolPath(_ string) (string, error) {
+	return f.path, f.err
+}
+
 func TestGetAPKInfoWithFallback(t *testing.T) {
 	tLogger := &testLogger{}
+
+	aaptCmd := mocks.NewCommand(t)
+	aaptCmd.On("RunAndReturnTrimmedCombinedOutput").Return(fakeAaptDumpBadgingOutput, nil)
+
+	cmdFactory := mocks.NewFactory(t)
+	cmdFactory.On("Create", mock.Anything, mock.Anything, mock.Anything).Return(aaptCmd)
+
+	sdkModel := fakeSDKLocator{path: "aapt"}
 
 	tests := []struct {
 		name    string
@@ -74,7 +102,7 @@ func TestGetAPKInfoWithFallback(t *testing.T) {
 				t.Fatalf("failed to write file, error: %s", err)
 			}
 
-			got, err := GetAPKInfoWithFallback(tLogger, apkPath)
+			got, err := GetAPKInfoWithFallback(tLogger, cmdFactory, sdkModel, apkPath)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetAPKInfoWithFallback() error = %v, wantErr %v", err, tt.wantErr)
 				return
