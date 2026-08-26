@@ -5,6 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/bitrise-io/go-utils/v2/filedownloader"
+	"github.com/bitrise-io/go-utils/v2/log"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -63,7 +65,8 @@ func Test_fetchAny(t *testing.T) {
 			}
 			t.Logf("source: %s, fallbackSources: %s", ts1.URL, fallbackURLs)
 
-			got, err := fetchAny(ts1.URL, fallbackURLs...)
+			downloader := filedownloader.NewDownloader(log.NewLogger())
+			got, err := fetchAny(downloader, ts1.URL, fallbackURLs...)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("fetchAny() error = %v, wantErr %v", err, tt.wantErr)
 				return

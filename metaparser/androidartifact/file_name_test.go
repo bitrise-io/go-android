@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/bitrise-io/go-utils/pretty"
+	"github.com/bitrise-io/go-utils/v2/pretty"
 )
 
 func TestParseArtifactPath(t *testing.T) {
