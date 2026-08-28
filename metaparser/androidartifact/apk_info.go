@@ -67,10 +67,10 @@ func GetAPKInfo(apkPath string) (Info, error) {
 		return Info{}, fmt.Errorf("failed to unzip the APK, error: %s", zipErr)
 	}
 	if resErr != nil {
-		return Info{}, fmt.Errorf("failed to parse resources, error: %s", zipErr)
+		return Info{}, fmt.Errorf("failed to parse resources, error: %s", resErr)
 	}
 	if manErr != nil {
-		return Info{}, fmt.Errorf("failed to parse AndroidManifest.xml, error: %s", zipErr)
+		return Info{}, fmt.Errorf("failed to parse AndroidManifest.xml, error: %s", manErr)
 	}
 
 	var manifest manifest
