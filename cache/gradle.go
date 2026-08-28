@@ -1,15 +1,16 @@
 package cache
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
 
-	"github.com/bitrise-io/go-utils/errorutil"
-	"github.com/bitrise-io/go-utils/pathutil"
 	"github.com/bitrise-io/go-utils/v2/command"
+	"github.com/bitrise-io/go-utils/v2/pathutil"
 	"github.com/hashicorp/go-version"
 )
 
@@ -40,7 +41,7 @@ func parseGradleVersion(out string) (string, error) {
 
 func projectGradleVersion(projectPth string, cmdFactory command.Factory) (string, error) {
 	gradlewPth := filepath.Join(projectPth, "gradlew")
-	exist, err := pathutil.IsPathExists(gradlewPth)
+	exist, err := pathutil.NewPathChecker().IsPathExists(gradlewPth)
 	if err != nil {
 		return "", fmt.Errorf("failed to check if %s exists: %s", gradlewPth, err)
 	}
@@ -52,7 +53,8 @@ func projectGradleVersion(projectPth string, cmdFactory command.Factory) (string
 	versionCmd := cmdFactory.Create("./gradlew", []string{"-version"}, &versionCmdOpts)
 	out, err := versionCmd.RunAndReturnTrimmedCombinedOutput()
 	if err != nil {
-		if errorutil.IsExitStatusError(err) {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
 			return "", fmt.Errorf("%s failed: %s", versionCmd.PrintableCommandArgs(), out)
 		}
 		return "", fmt.Errorf("%s failed: %s", versionCmd.PrintableCommandArgs(), err)
