@@ -3,8 +3,9 @@ package gradle
 import (
 	"path/filepath"
 
-	"github.com/bitrise-io/go-utils/command"
-	"github.com/bitrise-io/go-utils/ziputil"
+	"github.com/bitrise-io/go-utils/v2/fileutil"
+	"github.com/bitrise-io/go-utils/v2/pathutil"
+	"github.com/bitrise-io/go-utils/v2/ziputil"
 )
 
 // Artifact ...
@@ -15,10 +16,11 @@ type Artifact struct {
 
 // Export ...
 func (artifact Artifact) Export(destination string) error {
-	return command.CopyFile(artifact.Path, filepath.Join(destination, artifact.Name))
+	return fileutil.NewFileManager().CopyFile(artifact.Path, filepath.Join(destination, artifact.Name), &fileutil.CopyOptions{Overwrite: true})
 }
 
 // ExportZIP ...
 func (artifact Artifact) ExportZIP(destination string) error {
-	return ziputil.ZipDir(artifact.Path, filepath.Join(destination, artifact.Name), true)
+	zipManager := ziputil.NewZipManager(pathutil.NewPathChecker())
+	return zipManager.ZipDir(artifact.Path, filepath.Join(destination, artifact.Name), true)
 }
