@@ -22,14 +22,12 @@ type Project struct {
 }
 
 // NewProject ...
-func NewProject(location string, cmdFactory command.Factory, logger log.Logger) (Project, error) {
+func NewProject(location string, cmdFactory command.Factory, logger log.Logger, pathChecker pathutil.PathChecker) (Project, error) {
 	var err error
 	location, err = filepath.Abs(location)
 	if err != nil {
 		return Project{}, err
 	}
-
-	pathChecker := pathutil.NewPathChecker()
 
 	buildGradleFound, err := pathChecker.IsPathExists(filepath.Join(location, "build.gradle"))
 	if err != nil {
