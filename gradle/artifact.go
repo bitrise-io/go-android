@@ -15,12 +15,12 @@ type Artifact struct {
 }
 
 // Export ...
-func (artifact Artifact) Export(destination string) error {
-	return fileutil.NewFileManager().CopyFile(artifact.Path, filepath.Join(destination, artifact.Name), &fileutil.CopyOptions{Overwrite: true})
+func (artifact Artifact) Export(fileManager fileutil.FileManager, destination string) error {
+	return fileManager.CopyFile(artifact.Path, filepath.Join(destination, artifact.Name), &fileutil.CopyOptions{Overwrite: true})
 }
 
 // ExportZIP ...
-func (artifact Artifact) ExportZIP(destination string) error {
-	zipManager := ziputil.NewZipManager(pathutil.NewPathChecker())
+func (artifact Artifact) ExportZIP(pathChecker pathutil.PathChecker, destination string) error {
+	zipManager := ziputil.NewZipManager(pathChecker)
 	return zipManager.ZipDir(artifact.Path, filepath.Join(destination, artifact.Name), true)
 }
