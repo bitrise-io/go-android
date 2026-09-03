@@ -1,13 +1,19 @@
 format_version: "13"
 default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
 
+include:
+- repository: steps-check
+  branch: master
+  path: yamlfmt.bitrise.yml
+- repository: steps-check
+  branch: master
+  path: golang.bitrise.yml
+
 workflows:
   ci:
     steps:
-    - git::https://github.com/bitrise-steplib/steps-check.git:
-        title: Lint and Unit Test
+    - bundle::yamlfmt: {}
+    - bundle::golangci-lint:
         inputs:
-        - workflow: |-
-            lint
-            unit_test
-        - skip_step_yml_validation: "yes"
+        - golangci_lint_version: 2.11.4
+    - bundle::go-test: {}
