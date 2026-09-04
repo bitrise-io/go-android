@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/bitrise-io/go-utils/v2/command"
 	"github.com/bitrise-io/go-utils/v2/env"
 	"github.com/bitrise-io/go-utils/v2/pathutil"
+	"github.com/hashicorp/go-version"
 )
 
 var cmdFactory = command.NewFactory(env.NewRepository())
@@ -111,12 +113,14 @@ func getV2PlusSignature(pathParams []string) (string, error) {
 		return "", ErrNotVerified
 	}
 
-	// The signature details appear in the output in the following format:
-	// Signer #1 certificate DN: C=Aa, ST=Bbbbb, L=Ccccc, O=Ddddd, OU=Eeeee, CN=Fffff
-	// Signer #1 certificate SHA-256 digest: <hash>
-	// Signer #1 certificate SHA-1 digest: <hash>
-	// Signer #1 certificate MD5 digest: <hash>
-	regex := regexp.MustCompile("Signer #1 certificate DN: (.*)")
+	// apksigner (Android SDK Build-Tools) changed its output format starting with build-tools 37:
+	// - build-tools < 37: "Signer #1 certificate DN: ..."
+	// - build-tools >= 37: "V2 Signer: certificate DN: ..." (scheme label is V1/V2/V3.0/V3.1/V3.2/V4)
+	regex := regexp.MustCompile(`Signer #1 certificate DN: (.*)`)
+	if apkSignerVersion, err := version.NewVersion(filepath.Base(filepath.Dir(apkSignerPath))); err == nil && apkSignerVersion.GreaterThanOrEqual(version.Must(version.NewVersion("37.0.0"))) {
+		regex = regexp.MustCompile(`V\d+(?:\.\d+)? Signer: certificate DN: (.*)`)
+	}
+
 	res := regex.FindAllStringSubmatch(apkSignerOutput, 1)
 	if len(res) > 0 && len(res[0]) > 1 {
 		return res[0][1], nil
