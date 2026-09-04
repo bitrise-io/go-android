@@ -27,19 +27,19 @@ func (d PKCS12KeystoreDecoder) Decode(data []byte, password, alias, keyPassword 
 }
 
 func (d PKCS12KeystoreDecoder) IsInvalidCredentialsError(err error) bool {
-	return errors.Is(err, IncorrectKeystorePasswordError) ||
-		errors.Is(err, IncorrectAliasError) ||
-		errors.Is(err, IncorrectKeyPasswordError)
+	return errors.Is(err, ErrIncorrectKeystorePassword) ||
+		errors.Is(err, ErrIncorrectAlias) ||
+		errors.Is(err, ErrIncorrectKeyPassword)
 }
 
 func keystoreErrorFromPKCS12Error(err error) error {
 	switch {
 	case errors.Is(err, pkcs12.IncorrectKeystorePasswordError):
-		return IncorrectKeystorePasswordError
+		return ErrIncorrectKeystorePassword
 	case errors.Is(err, pkcs12.IncorrectAliasError):
-		return IncorrectAliasError
+		return ErrIncorrectAlias
 	case errors.Is(err, pkcs12.IncorrectKeyPasswordError):
-		return IncorrectKeyPasswordError
+		return ErrIncorrectKeyPassword
 	default:
 		return err
 	}

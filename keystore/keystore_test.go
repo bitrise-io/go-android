@@ -122,7 +122,7 @@ func TestParse(t *testing.T) {
 			password:           "keystore",
 			privateKeyAlias:    "mykey",
 			privateKeyPassword: "keystore",
-			wantError:          InvalidKeystoreFileError,
+			wantError:          ErrInvalidKeystoreFile,
 		},
 	}
 	for _, tt := range tests {
@@ -165,7 +165,7 @@ func TestIncorrectKeystoreCredentials(t *testing.T) {
 			password:           "incorrect-password",
 			privateKeyAlias:    "key0",
 			privateKeyPassword: "keypass",
-			wantError:          IncorrectKeystorePasswordError,
+			wantError:          ErrIncorrectKeystorePassword,
 		},
 		{
 			name:               "PKCS12 keystore test - incorrect alias",
@@ -173,7 +173,7 @@ func TestIncorrectKeystoreCredentials(t *testing.T) {
 			password:           "storepass",
 			privateKeyAlias:    "incorrect-alias",
 			privateKeyPassword: "keypass",
-			wantError:          IncorrectAliasError,
+			wantError:          ErrIncorrectAlias,
 		},
 		{
 			name:               "PKCS12 keystore test - incorrect key password",
@@ -181,7 +181,7 @@ func TestIncorrectKeystoreCredentials(t *testing.T) {
 			password:           "storepass",
 			privateKeyAlias:    "key0",
 			privateKeyPassword: "incorrect-keypassword",
-			wantError:          IncorrectKeyPasswordError,
+			wantError:          ErrIncorrectKeyPassword,
 		},
 		{
 			name:               "JKS keystore test - incorrect password",
@@ -189,7 +189,7 @@ func TestIncorrectKeystoreCredentials(t *testing.T) {
 			password:           "incorrect-password",
 			privateKeyAlias:    "mykey",
 			privateKeyPassword: "keystore",
-			wantError:          IncorrectKeystorePasswordError,
+			wantError:          ErrIncorrectKeystorePassword,
 		},
 		{
 			name:               "JKS keystore test - incorrect alias",
@@ -197,7 +197,7 @@ func TestIncorrectKeystoreCredentials(t *testing.T) {
 			password:           "keystore",
 			privateKeyAlias:    "incorrect-alias",
 			privateKeyPassword: "keystore",
-			wantError:          IncorrectAliasError,
+			wantError:          ErrIncorrectAlias,
 		},
 		{
 			name:               "JKS keystore test - incorrect key password",
@@ -205,7 +205,7 @@ func TestIncorrectKeystoreCredentials(t *testing.T) {
 			password:           "keystore",
 			privateKeyAlias:    "mykey",
 			privateKeyPassword: "incorrect-keypassword",
-			wantError:          IncorrectKeyPasswordError,
+			wantError:          ErrIncorrectKeyPassword,
 		},
 	}
 	for _, tt := range tests {

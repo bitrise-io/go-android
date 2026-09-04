@@ -23,8 +23,8 @@ const (
 )
 
 var (
-	NotVerifiedError      = errors.New("not verified")
-	NoSignatureFoundError = errors.New("no signature found")
+	ErrNotVerified      = errors.New("not verified")
+	ErrNoSignatureFound = errors.New("no signature found")
 )
 
 // Read ...
@@ -35,20 +35,20 @@ func Read(path string) (string, error) {
 }
 
 // ReadAABSignature returns the signature of the provided AAB file.
-// If the signature can't be read (unsigned, unexpected certificate printing format, ...), it returns a NoSignatureFoundError.
-// If the signature is not verified, it returns a NotVerifiedError.
+// If the signature can't be read (unsigned, unexpected certificate printing format, ...), it returns a ErrNoSignatureFound.
+// If the signature is not verified, it returns a ErrNotVerified.
 func ReadAABSignature(path string) (string, error) {
 	return getJarSignature(path)
 }
 
 // ReadAPKSignature returns the signature of the provided APK file.
-// If the signature can't be read (unsigned, unexpected certificate printing format, ...), it returns a NoSignatureFoundError.
-// If the signature is not verified, it returns a NotVerifiedError.
+// If the signature can't be read (unsigned, unexpected certificate printing format, ...), it returns a ErrNoSignatureFound.
+// If the signature is not verified, it returns a ErrNotVerified.
 func ReadAPKSignature(apkPath string) (string, error) {
 	idSigPath := apkPath + ".idsig"
 	if _, err := os.Stat(idSigPath); err == nil {
 		signature, err := getV4Signature(apkPath, idSigPath)
-		if err != nil && !errors.Is(err, NotVerifiedError) && !errors.Is(err, NoSignatureFoundError) {
+		if err != nil && !errors.Is(err, ErrNotVerified) && !errors.Is(err, ErrNoSignatureFound) {
 			return "", err
 		}
 		if signature != "" {
@@ -57,7 +57,7 @@ func ReadAPKSignature(apkPath string) (string, error) {
 	}
 
 	signature, err := getV23Signature(apkPath)
-	if err != nil && !errors.Is(err, NotVerifiedError) && !errors.Is(err, NoSignatureFoundError) {
+	if err != nil && !errors.Is(err, ErrNotVerified) && !errors.Is(err, ErrNoSignatureFound) {
 		return "", err
 	}
 	if signature != "" {
@@ -101,14 +101,14 @@ func getV2PlusSignature(pathParams []string) (string, error) {
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
 			if strings.Contains(apkSignerOutput, `DOES NOT VERIFY`) {
-				return "", NotVerifiedError
+				return "", ErrNotVerified
 			}
 		}
 		return "", err
 	}
 
 	if !strings.Contains(apkSignerOutput, validV2PlusSignatureMessage) {
-		return "", NotVerifiedError
+		return "", ErrNotVerified
 	}
 
 	// The signature details appear in the output in the following format:
@@ -122,7 +122,7 @@ func getV2PlusSignature(pathParams []string) (string, error) {
 		return res[0][1], nil
 	}
 
-	return "", NoSignatureFoundError
+	return "", ErrNoSignatureFound
 }
 
 func getJarSignature(path string) (string, error) {
@@ -133,11 +133,11 @@ func getJarSignature(path string) (string, error) {
 	}
 
 	if strings.Contains(output, unsignedJarSignatureMessage) {
-		return "", NoSignatureFoundError
+		return "", ErrNoSignatureFound
 	}
 
 	if !strings.Contains(output, validJarSignatureMessage) {
-		return "", NotVerifiedError
+		return "", ErrNotVerified
 	}
 
 	var signature string
@@ -152,5 +152,5 @@ func getJarSignature(path string) (string, error) {
 		return signature, nil
 	}
 
-	return "", NoSignatureFoundError
+	return "", ErrNoSignatureFound
 }

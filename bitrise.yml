@@ -4,10 +4,29 @@ default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
 workflows:
   ci:
     steps:
-    - git::https://github.com/bitrise-steplib/steps-check.git:
-        title: Lint and Unit Test
+    - script@1:
+        title: yamlfmt
         inputs:
-        - workflow: |-
-            lint
-            unit_test
-        - skip_step_yml_validation: "yes"
+        - content: |-
+            #!/bin/env bash
+            set -eo pipefail
+            set -x
+            go run github.com/google/yamlfmt/cmd/yamlfmt@v0.21.0 -lint -conf .ymlfmt -match_type doublestar -exclude "_tmp/**,.bitrise.secrets.yml,.git/**,.github/**,vendor/**" '**/*.yml'
+    - script@1:
+        title: golangci-lint
+        inputs:
+        - content: |-
+            #!/bin/env bash
+            set -eo pipefail
+            set -x
+            curl -sSfL https://golangci-lint.run/install.sh | sh -s v2.13.2
+            ./bin/golangci-lint run --timeout 5m --color always --config .golangci.yml
+    - script@1:
+        title: go build & test
+        inputs:
+        - content: |-
+            #!/bin/env bash
+            set -exo pipefail
+
+            go build ./...
+            go test -v ./...
