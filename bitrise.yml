@@ -1,19 +1,33 @@
 format_version: "13"
 default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
 
-include:
-- repository: steps-check
-  branch: master
-  path: yamlfmt.bitrise.yml
-- repository: steps-check
-  branch: master
-  path: golang.bitrise.yml
-
 workflows:
   ci:
     steps:
-    - bundle::yamlfmt: {}
-    - bundle::golangci-lint:
+    - script@1:
+        title: yamlfmt
         inputs:
-        - golangci_lint_version: 2.11.4
-    - bundle::go-test: {}
+        - content: |-
+            #!/bin/env bash
+            set -eo pipefail
+            set -x
+            go run github.com/google/yamlfmt/cmd/yamlfmt@v0.21.0 -conf .ymlfmt -match_type doublestar -exclude "_tmp/**,.bitrise.secrets.yml,.git/**,.github/**,vendor/**" '**/*.yml'
+    - autofix-ci@1: {}
+    - script@1:
+        title: golangci-lint
+        inputs:
+        - content: |-
+            #!/bin/env bash
+            set -eo pipefail
+            set -x
+            curl -sSfL https://golangci-lint.run/install.sh | sh -s v2.13.2
+            ./bin/golangci-lint run --timeout 5m --color always --config .golangci.yml
+    - script@1:
+        title: go build & test
+        inputs:
+        - content: |-
+            #!/bin/env bash
+            set -exo pipefail
+
+            go build ./...
+            go test -v ./...
