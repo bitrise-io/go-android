@@ -11,8 +11,7 @@ workflows:
             #!/bin/env bash
             set -eo pipefail
             set -x
-            go run github.com/google/yamlfmt/cmd/yamlfmt@v0.21.0 -conf .ymlfmt -match_type doublestar -exclude "_tmp/**,.bitrise.secrets.yml,.git/**,.github/**,vendor/**" '**/*.yml'
-    - autofix-ci@1: {}
+            go run github.com/google/yamlfmt/cmd/yamlfmt@v0.21.0 -lint -conf .ymlfmt -match_type doublestar -exclude "_tmp/**,.bitrise.secrets.yml,.git/**,.github/**,vendor/**" '**/*.yml'
     - script@1:
         title: golangci-lint
         inputs:
