@@ -21,7 +21,7 @@ func (d JKSKeystoreDecoder) Decode(data []byte, password, alias, keyPassword str
 	})
 	if err != nil {
 		if err.Error() == "digest mismatch" {
-			return nil, nil, IncorrectKeystorePasswordError
+			return nil, nil, ErrIncorrectKeystorePassword
 		}
 		return nil, nil, err
 	}
@@ -34,11 +34,11 @@ func (d JKSKeystoreDecoder) Decode(data []byte, password, alias, keyPassword str
 		}
 	}
 	if keypair == nil {
-		return nil, nil, IncorrectAliasError
+		return nil, nil, ErrIncorrectAlias
 	}
 	if keypair.PrivKeyErr != nil {
 		if keypair.PrivKeyErr.Error() == "invalid password" {
-			return nil, nil, IncorrectKeyPasswordError
+			return nil, nil, ErrIncorrectKeyPassword
 		}
 		return nil, nil, fmt.Errorf("failed to decrypt key: %s", keypair.PrivKeyErr)
 	}
@@ -55,7 +55,7 @@ func (d JKSKeystoreDecoder) Decode(data []byte, password, alias, keyPassword str
 }
 
 func (d JKSKeystoreDecoder) IsInvalidCredentialsError(err error) bool {
-	return errors.Is(err, IncorrectKeystorePasswordError) ||
-		errors.Is(err, IncorrectAliasError) ||
-		errors.Is(err, IncorrectKeyPasswordError)
+	return errors.Is(err, ErrIncorrectKeystorePassword) ||
+		errors.Is(err, ErrIncorrectAlias) ||
+		errors.Is(err, ErrIncorrectKeyPassword)
 }

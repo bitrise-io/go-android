@@ -25,9 +25,6 @@ linters:
     - linters:
       - staticcheck
       text: QF1003 # https://staticcheck.dev/docs/checks#QF1003
-    - linters:
-      - staticcheck
-      text: ST1012 # exported error vars predate this convention; renaming would break consumers' `== pkg.FooError` checks
     - path: _test\.go$
       linters:
       - dupl
