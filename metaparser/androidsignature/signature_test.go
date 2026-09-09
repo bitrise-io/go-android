@@ -39,12 +39,12 @@ func Test_ReadAABSignature(t *testing.T) {
 		{
 			name:      "Returns NotVerified for week signing algorithm",
 			apkPath:   path.Join(tmpDir, "aab", "app-weak-algorithm-signed.aab"),
-			wantError: NotVerifiedError.Error(),
+			wantError: ErrNotVerified.Error(),
 		},
 		{
 			name:      "Unsigned AAB",
 			apkPath:   path.Join(tmpDir, "aab", "app-release-unsigned.aab"),
-			wantError: NoSignatureFoundError.Error(),
+			wantError: ErrNoSignatureFound.Error(),
 		},
 	}
 	for _, tt := range tests {
@@ -86,7 +86,7 @@ func Test_ReadAPKSignature(t *testing.T) {
 		{
 			name:      "Unsigned APK",
 			apkPath:   path.Join(tmpDir, "apks", "app-release-unsigned.apk"),
-			wantError: NoSignatureFoundError.Error(),
+			wantError: ErrNoSignatureFound.Error(),
 		},
 		{
 			name:          "Debug signed APK",

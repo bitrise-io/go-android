@@ -18,10 +18,10 @@ type CertificateInformation struct {
 }
 
 var (
-	IncorrectAliasError            = errors.New("incorrect key alias")
-	IncorrectKeystorePasswordError = errors.New("incorrect keystore password")
-	IncorrectKeyPasswordError      = errors.New("incorrect key password")
-	InvalidKeystoreFileError       = errors.New("invalid keystore file")
+	ErrIncorrectAlias            = errors.New("incorrect key alias")
+	ErrIncorrectKeystorePassword = errors.New("incorrect keystore password")
+	ErrIncorrectKeyPassword      = errors.New("incorrect key password")
+	ErrInvalidKeystoreFile       = errors.New("invalid keystore file")
 )
 
 type Decoder interface {
@@ -68,7 +68,7 @@ func (p Reader) ReadCertificateInformation(data []byte, password, alias, keyPass
 				decodeErrsStr += "\n"
 			}
 		}
-		return nil, fmt.Errorf("%w: failed to decode as PKCS12 or JKS:\n%s", InvalidKeystoreFileError, decodeErrsStr)
+		return nil, fmt.Errorf("%w: failed to decode as PKCS12 or JKS:\n%s", ErrInvalidKeystoreFile, decodeErrsStr)
 	}
 
 	if cert == nil {
