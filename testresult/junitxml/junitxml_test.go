@@ -827,3 +827,27 @@ func TestConverter_Convert_Grouped_report(t *testing.T) {
 		})
 	}
 }
+
+func TestConverter_Detect(t *testing.T) {
+	tests := []struct {
+		name  string
+		files []string
+		want  bool
+	}{
+		{name: "lowercase xml", files: []string{"TEST-Login.xml"}, want: true},
+		{name: "uppercase xml", files: []string{"TEST-Login.XML"}, want: true},
+		{name: "mixed case xml", files: []string{"TEST-Login.Xml"}, want: true},
+		{name: "lowercase junit", files: []string{"report.junit"}, want: true},
+		{name: "uppercase junit", files: []string{"report.JUNIT"}, want: true},
+		{name: "uppercase xml next to other files", files: []string{"test-info.json", "screenshot.png", "TEST-Login.XML"}, want: true},
+		{name: "no test result", files: []string{"test-info.json", "screenshot.png", "log.txt"}, want: false},
+		{name: "xml only inside the name", files: []string{"xml-report.txt"}, want: false},
+		{name: "no files", files: nil, want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var c Converter
+			require.Equal(t, tt.want, c.Detect(tt.files))
+		})
+	}
+}
