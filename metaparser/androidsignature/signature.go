@@ -31,16 +31,19 @@ var (
 )
 
 // apkSignerDNRegex matches the first signer's certificate DN in the output of
-// `apksigner verify --print-certs -v`. The line's format depends on the build-tools version and
-// on whether the APK uses key rotation (APK Signature Scheme v3.1):
+// `apksigner verify --print-certs -v`. The line's format depends on the build-tools version,
+// on the number of signers and on whether the APK uses key rotation (APK Signature Scheme v3.1):
 //
 //	build-tools < 37:  Signer #1 certificate DN: ...
 //	                   Signer (minSdkVersion=33, maxSdkVersion=2147483647) certificate DN: ...
 //	build-tools >= 37: V3.0 Signer: certificate DN: ...
+//	                   V2 Signer #1: certificate DN: ...
 //	                   V3.1 Signer: (minSdkVersion=33, maxSdkVersion=2147483647) certificate DN: ...
+//	                   V3.2 Hybrid Classical Signer: (minSdkVersion=33, maxSdkVersion=2147483647) certificate DN: ...
 //
-// With key rotation the rotated (current) signer is listed first, followed by the original one.
-var apkSignerDNRegex = regexp.MustCompile(`(?m)^(?:V\d+(?:\.\d+)? )?Signer(?::| #1)?(?: \(minSdkVersion=.*?\))? certificate DN: (.*)`)
+// With several signers the first one is reported. With key rotation the rotated (current) signer
+// is listed first, followed by the original one.
+var apkSignerDNRegex = regexp.MustCompile(`(?m)^(?:V\d+(?:\.\d+)?(?: \w+)* )?Signer(?: #1)?:?(?: \(minSdkVersion=.*?\))? certificate DN: (.*)`)
 
 // Read ...
 //

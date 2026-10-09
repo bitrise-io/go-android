@@ -72,6 +72,36 @@ V3.0 Signer: (minSdkVersion=24, maxSdkVersion=32) certificate DN: CN=k1, O=Test
 V3.0 Signer: (minSdkVersion=24, maxSdkVersion=32) certificate SHA-256 digest: 3959a0bc7d2d3143da2565ef1aa7315499ef94ab26da14b7feb259f708b5a93f
 `
 
+// An APK signed by k1 and k2 (v1 and v2 schemes; v3 allows a single signer only).
+const apkSignerOutputTwoSigners35 = `Verifies
+Verified using v1 scheme (JAR signing): true
+Verified using v2 scheme (APK Signature Scheme v2): true
+Verified using v3 scheme (APK Signature Scheme v3): false
+Verified using v3.1 scheme (APK Signature Scheme v3.1): false
+Verified using v4 scheme (APK Signature Scheme v4): false
+Verified for SourceStamp: false
+Number of signers: 2
+Signer #1 certificate DN: CN=k1, O=Test
+Signer #1 certificate SHA-256 digest: 3959a0bc7d2d3143da2565ef1aa7315499ef94ab26da14b7feb259f708b5a93f
+Signer #2 certificate DN: CN=k2, O=Test
+Signer #2 certificate SHA-256 digest: eb3b2fb1d9d32f27222ae12767db7ca06e589bf896ded795ce659761b93ce383
+`
+
+const apkSignerOutputTwoSigners37 = `Verifies
+Verified using v1 scheme (JAR signing): true
+Verified using v2 scheme (APK Signature Scheme v2): true
+Verified using v3 scheme (APK Signature Scheme v3): false
+Verified using v3.1 scheme (APK Signature Scheme v3.1): false
+Verified using v3.2 scheme (APK Signature Scheme v3.2): false
+Verified using v4 scheme (APK Signature Scheme v4): false
+Verified for SourceStamp: false
+Number of signers: 2
+V2 Signer #1: certificate DN: CN=k1, O=Test
+V2 Signer #1: certificate SHA-256 digest: 3959a0bc7d2d3143da2565ef1aa7315499ef94ab26da14b7feb259f708b5a93f
+V2 Signer #2: certificate DN: CN=k2, O=Test
+V2 Signer #2: certificate SHA-256 digest: eb3b2fb1d9d32f27222ae12767db7ca06e589bf896ded795ce659761b93ce383
+`
+
 // An unsigned APK, or one without a v1 signature while its minSdkVersion is below 24.
 const apkSignerOutputNotVerified = `DOES NOT VERIFY
 ERROR: Missing META-INF/MANIFEST.MF
@@ -194,6 +224,18 @@ func TestReadAPKSignature_apkSignerOutput(t *testing.T) {
 			wantSignature:     "CN=k2, O=Test",
 		},
 		{
+			name:              "APK with two signers reports the first one (build-tools 35)",
+			buildToolsVersion: "35.0.0",
+			apkSignerOutput:   apkSignerOutputTwoSigners35,
+			wantSignature:     "CN=k1, O=Test",
+		},
+		{
+			name:              "APK with two signers reports the first one (build-tools 37)",
+			buildToolsVersion: "37.0.0",
+			apkSignerOutput:   apkSignerOutputTwoSigners37,
+			wantSignature:     "CN=k1, O=Test",
+		},
+		{
 			name:              "APK that does not verify falls back to its JAR signature",
 			buildToolsVersion: "35.0.0",
 			apkSignerOutput:   apkSignerOutputNotVerifiedWithWarnings,
@@ -306,8 +348,23 @@ func TestAPKSignerDNRegex(t *testing.T) {
 			wantDN: "CN=k2, O=Test",
 		},
 		{
+			name:   "build-tools >= 37 with several signers",
+			line:   "V2 Signer #1: certificate DN: CN=k1, O=Test",
+			wantDN: "CN=k1, O=Test",
+		},
+		{
+			// Label taken from build-tools 37.0.0's apksigner; no v3.2 (hybrid post-quantum) signed APK at hand.
+			name:   "build-tools >= 37 with a v3.2 hybrid signature",
+			line:   "V3.2 Hybrid Classical Signer: (minSdkVersion=33, maxSdkVersion=2147483647) certificate DN: CN=k2, O=Test",
+			wantDN: "CN=k2, O=Test",
+		},
+		{
 			name: "second signer",
 			line: "Signer #2 certificate DN: CN=k2, O=Test",
+		},
+		{
+			name: "second signer (build-tools >= 37)",
+			line: "V2 Signer #2: certificate DN: CN=k2, O=Test",
 		},
 		{
 			name: "source stamp signer",
