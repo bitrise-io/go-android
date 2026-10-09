@@ -22,7 +22,7 @@ const (
 	validV2PlusSignatureMessage       = "Verifies"
 	notVerifiedV2PlusSignatureMessage = "DOES NOT VERIFY"
 
-	maxAPKSignerReasonLines = 5
+	maxFailureReasonLines = 5
 )
 
 var (
@@ -113,18 +113,18 @@ func getV2PlusSignature(pathParams []string) (string, error) {
 	}
 
 	params := append([]string{"verify", "--print-certs", "-v"}, pathParams...)
-	opts := &command.Opts{ErrorFinder: apkSignerErrorFinder}
+	opts := &command.Opts{ErrorFinder: errorFinder}
 	apkSignerOutput, err := cmdFactory.Create(apkSignerPath, params, opts).RunAndReturnTrimmedCombinedOutput()
 	if err != nil {
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) && strings.Contains(apkSignerOutput, notVerifiedV2PlusSignatureMessage) {
-			if reason := apkSignerFailureReason(apkSignerOutput); reason != "" {
+			if reason := failureReason(apkSignerOutput); reason != "" {
 				return "", fmt.Errorf("%w: %s", ErrNotVerified, reason)
 			}
 			return "", ErrNotVerified
 		}
-		// apksigner also exits with 1 when it crashes, e.g. on a malformed APK; apkSignerErrorFinder
-		// has put the reason into err.
+		// apksigner also exits with 1 when it crashes, e.g. on a malformed APK; errorFinder has put
+		// the reason into err.
 		return "", err
 	}
 
@@ -139,20 +139,20 @@ func getV2PlusSignature(pathParams []string) (string, error) {
 	return "", ErrNoSignatureFound
 }
 
-// apkSignerErrorFinder is a command.ErrorFinder that puts apksigner's failure reason into the command's error,
+// errorFinder is a command.ErrorFinder that puts the signing tool's failure reason into the command's error,
 // which would otherwise only say "check the command's output for details".
-func apkSignerErrorFinder(output string) []string {
-	if reason := apkSignerFailureReason(output); reason != "" {
+func errorFinder(output string) []string {
+	if reason := failureReason(output); reason != "" {
 		return []string{reason}
 	}
 
 	return nil
 }
 
-// apkSignerFailureReason condenses the output of a failed apksigner run into a single line:
-// the ERROR lines of an APK that does not verify, or the exception and its causes when apksigner crashed.
-// Stack frames and WARNING lines are left out, and at most maxAPKSignerReasonLines lines are kept.
-func apkSignerFailureReason(output string) string {
+// failureReason condenses the output of a failed apksigner or jarsigner run into a single line: the ERROR
+// lines of an APK that does not verify, or the exception and its causes when the tool crashed.
+// Stack frames and WARNING lines are left out, and at most maxFailureReasonLines lines are kept.
+func failureReason(output string) string {
 	var lines []string
 
 	for _, line := range strings.Split(output, "\n") {
@@ -169,9 +169,9 @@ func apkSignerFailureReason(output string) string {
 		lines = append(lines, line)
 	}
 
-	if len(lines) > maxAPKSignerReasonLines {
-		omitted := len(lines) - maxAPKSignerReasonLines
-		lines = append(lines[:maxAPKSignerReasonLines], fmt.Sprintf("(%d more lines)", omitted))
+	if len(lines) > maxFailureReasonLines {
+		omitted := len(lines) - maxFailureReasonLines
+		lines = append(lines[:maxFailureReasonLines], fmt.Sprintf("(%d more lines)", omitted))
 	}
 
 	return strings.Join(lines, "; ")
@@ -179,7 +179,8 @@ func apkSignerFailureReason(output string) string {
 
 func getJarSignature(path string) (string, error) {
 	params := []string{"-verify", "-certs", "-verbose", path}
-	output, err := cmdFactory.Create("jarsigner", params, nil).RunAndReturnTrimmedCombinedOutput()
+	opts := &command.Opts{ErrorFinder: errorFinder}
+	output, err := cmdFactory.Create("jarsigner", params, opts).RunAndReturnTrimmedCombinedOutput()
 	if err != nil {
 		return "", err
 	}

@@ -118,7 +118,7 @@ func TestReadAPKSignature_apkSignerOutput(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fakeAndroidSDK(t, tt.buildToolsVersion, tt.apkSignerOutput, tt.apkSignerExitCode)
-			fakeJarsigner(t, "jar is unsigned.")
+			fakeJarsigner(t, "jar is unsigned.", 0)
 
 			gotSignature, gotError := ReadAPKSignature("app.apk")
 
@@ -136,6 +136,18 @@ func TestReadAPKSignature_apkSignerOutput(t *testing.T) {
 	}
 }
 
+func TestReadAABSignature_jarSignerCrash(t *testing.T) {
+	fakeJarsigner(t, "jarsigner: java.util.zip.ZipException: zip END header not found\n", 1)
+
+	gotSignature, gotError := ReadAABSignature("app.aab")
+
+	require.Empty(t, gotSignature)
+	require.Error(t, gotError)
+	require.Contains(t, gotError.Error(), "command failed with exit status 1")
+	require.Contains(t, gotError.Error(), ": jarsigner: java.util.zip.ZipException: zip END header not found")
+	require.NotContains(t, gotError.Error(), "check the command's output for details")
+}
+
 // fakeAndroidSDK points ANDROID_HOME at an SDK whose only apksigner prints output and exits with exitCode.
 func fakeAndroidSDK(t *testing.T, buildToolsVersion, output string, exitCode int) {
 	t.Helper()
@@ -147,12 +159,12 @@ func fakeAndroidSDK(t *testing.T, buildToolsVersion, output string, exitCode int
 	t.Setenv("ANDROID_HOME", sdkRoot)
 }
 
-// fakeJarsigner puts a jarsigner that prints output first on the PATH.
-func fakeJarsigner(t *testing.T, output string) {
+// fakeJarsigner puts a jarsigner that prints output and exits with exitCode first on the PATH.
+func fakeJarsigner(t *testing.T, output string, exitCode int) {
 	t.Helper()
 
 	dir := t.TempDir()
-	writeFakeTool(t, filepath.Join(dir, "jarsigner"), output, 0)
+	writeFakeTool(t, filepath.Join(dir, "jarsigner"), output, exitCode)
 	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
 }
 
