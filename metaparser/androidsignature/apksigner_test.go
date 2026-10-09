@@ -148,7 +148,6 @@ func TestReadAABSignature_jarSignerCrash(t *testing.T) {
 	require.NotContains(t, gotError.Error(), "check the command's output for details")
 }
 
-// fakeAndroidSDK points ANDROID_HOME at an SDK whose only apksigner prints output and exits with exitCode.
 func fakeAndroidSDK(t *testing.T, buildToolsVersion, output string, exitCode int) {
 	t.Helper()
 
@@ -159,7 +158,6 @@ func fakeAndroidSDK(t *testing.T, buildToolsVersion, output string, exitCode int
 	t.Setenv("ANDROID_HOME", sdkRoot)
 }
 
-// fakeJarsigner puts a jarsigner that prints output and exits with exitCode first on the PATH.
 func fakeJarsigner(t *testing.T, output string, exitCode int) {
 	t.Helper()
 

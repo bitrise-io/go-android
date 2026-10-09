@@ -30,9 +30,8 @@ var (
 	ErrNoSignatureFound = errors.New("no signature found")
 )
 
-// apkSignerDNRegex matches the first signer's certificate DN printed by `apksigner verify --print-certs -v`.
-// The signer label varies by build-tools version, number of signers and key rotation, e.g. "Signer #1",
-// "V2 Signer #1:" or "V3.1 Signer: (minSdkVersion=33, maxSdkVersion=2147483647)"; the rotated signer comes first.
+// apksigner's signer label depends on the build-tools version, the number of signers and key rotation,
+// e.g. "Signer #1", "V2 Signer #1:" or "V3.1 Signer: (minSdkVersion=33, maxSdkVersion=2147483647)".
 var apkSignerDNRegex = regexp.MustCompile(`(?m)^(?:V\d+(?:\.\d+)?(?: \w+)* )?Signer(?: #1)?:?(?: \(minSdkVersion=.*?\))? certificate DN: (.*)`)
 
 // Read ...
@@ -52,8 +51,6 @@ func ReadAABSignature(path string) (string, error) {
 // ReadAPKSignature returns the signature of the provided APK file.
 // If the signature can't be read (unsigned, unexpected certificate printing format, ...), it returns a ErrNoSignatureFound.
 // If the signature is not verified, it returns a ErrNotVerified.
-// The returned error also wraps apksigner's verdict when the fallback to the JAR (v1) signature fails as well,
-// e.g. "no signature found (apksigner: not verified: ERROR: Missing META-INF/MANIFEST.MF)".
 func ReadAPKSignature(apkPath string) (string, error) {
 	idSigPath := apkPath + ".idsig"
 	if _, err := os.Stat(idSigPath); err == nil {
@@ -76,8 +73,7 @@ func ReadAPKSignature(apkPath string) (string, error) {
 
 	signature, err := getJarSignature(apkPath)
 	if err != nil && apkSignerErr != nil {
-		// apksigner's verdict tells an unsigned APK apart from one signed without a v1 signature
-		// while targeting a minSdkVersion below 24, or from one whose signature is broken.
+		// Only apksigner's verdict tells an unsigned APK apart from one signed without v1 below minSdkVersion 24.
 		return "", fmt.Errorf("%w (apksigner: %w)", err, apkSignerErr)
 	}
 
@@ -123,8 +119,7 @@ func getV2PlusSignature(pathParams []string) (string, error) {
 			}
 			return "", ErrNotVerified
 		}
-		// apksigner also exits with 1 when it crashes, e.g. on a malformed APK; errorFinder has put
-		// the reason into err.
+		// apksigner also exits with 1 when it crashes, e.g. on a malformed APK.
 		return "", err
 	}
 
@@ -139,8 +134,7 @@ func getV2PlusSignature(pathParams []string) (string, error) {
 	return "", ErrNoSignatureFound
 }
 
-// errorFinder is a command.ErrorFinder that puts the signing tool's failure reason into the command's error,
-// which would otherwise only say "check the command's output for details".
+// Without an ErrorFinder the command error only says "check the command's output for details".
 func errorFinder(output string) []string {
 	if reason := failureReason(output); reason != "" {
 		return []string{reason}
@@ -149,9 +143,6 @@ func errorFinder(output string) []string {
 	return nil
 }
 
-// failureReason condenses the output of a failed apksigner or jarsigner run into a single line: the ERROR
-// lines of an APK that does not verify, or the exception and its causes when the tool crashed.
-// Stack frames and WARNING lines are left out, and at most maxFailureReasonLines lines are kept.
 func failureReason(output string) string {
 	var lines []string
 
