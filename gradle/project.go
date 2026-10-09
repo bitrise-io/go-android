@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bitrise-io/go-utils/pathutil"
 	"github.com/bitrise-io/go-utils/v2/command"
 	"github.com/bitrise-io/go-utils/v2/log"
+	"github.com/bitrise-io/go-utils/v2/pathutil"
 	"github.com/ryanuber/go-glob"
 )
 
@@ -22,19 +22,19 @@ type Project struct {
 }
 
 // NewProject ...
-func NewProject(location string, cmdFactory command.Factory, logger log.Logger) (Project, error) {
+func NewProject(location string, cmdFactory command.Factory, logger log.Logger, pathChecker pathutil.PathChecker) (Project, error) {
 	var err error
 	location, err = filepath.Abs(location)
 	if err != nil {
 		return Project{}, err
 	}
 
-	buildGradleFound, err := pathutil.IsPathExists(filepath.Join(location, "build.gradle"))
+	buildGradleFound, err := pathChecker.IsPathExists(filepath.Join(location, "build.gradle"))
 	if err != nil {
 		return Project{}, err
 	}
 
-	buildGradleKtsFound, err := pathutil.IsPathExists(filepath.Join(location, "build.gradle.kts"))
+	buildGradleKtsFound, err := pathChecker.IsPathExists(filepath.Join(location, "build.gradle.kts"))
 	if err != nil {
 		return Project{}, err
 	}
@@ -57,9 +57,9 @@ func NewProject(location string, cmdFactory command.Factory, logger log.Logger) 
 	projectsCount := 0
 	for _, entry := range entries {
 		if entry.IsDir() {
-			if buildGradleExists, err := pathutil.IsPathExists(filepath.Join(root, entry.Name(), "build.gradle")); err != nil {
+			if buildGradleExists, err := pathChecker.IsPathExists(filepath.Join(root, entry.Name(), "build.gradle")); err != nil {
 				return Project{}, err
-			} else if buildGradleKtsExists, err := pathutil.IsPathExists(filepath.Join(root, entry.Name(), "build.gradle.kts")); err != nil {
+			} else if buildGradleKtsExists, err := pathChecker.IsPathExists(filepath.Join(root, entry.Name(), "build.gradle.kts")); err != nil {
 				return Project{}, err
 			} else if buildGradleExists || buildGradleKtsExists {
 				projectsCount++
