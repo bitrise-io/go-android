@@ -9,20 +9,21 @@ import (
 	"strings"
 
 	"github.com/bitrise-io/go-steputils/cache"
-	"github.com/bitrise-io/go-utils/fileutil"
-	"github.com/bitrise-io/go-utils/log"
-	"github.com/bitrise-io/go-utils/pathutil"
 	"github.com/bitrise-io/go-utils/v2/command"
+	"github.com/bitrise-io/go-utils/v2/fileutil"
+	"github.com/bitrise-io/go-utils/v2/log"
+	"github.com/bitrise-io/go-utils/v2/pathutil"
 )
 
 // AndroidGradleCacheItemCollector ...
 type AndroidGradleCacheItemCollector struct {
 	cmdFactory command.Factory
+	logger     log.Logger
 }
 
 // NewAndroidGradleCacheItemCollector ...
-func NewAndroidGradleCacheItemCollector(cmdFactory command.Factory) cache.ItemCollector {
-	return AndroidGradleCacheItemCollector{cmdFactory: cmdFactory}
+func NewAndroidGradleCacheItemCollector(cmdFactory command.Factory, logger log.Logger) cache.ItemCollector {
+	return AndroidGradleCacheItemCollector{cmdFactory: cmdFactory, logger: logger}
 }
 
 // Collect ...
@@ -31,7 +32,10 @@ func (c AndroidGradleCacheItemCollector) Collect(dir string, cacheLevel cache.Le
 		return nil, nil, nil
 	}
 
-	homeDir := pathutil.UserHomeDir()
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return nil, nil, fmt.Errorf("cache collection skipped: failed to determine user home dir: %w", err)
+	}
 
 	projectRoot, err := filepath.Abs(dir)
 	if err != nil {
@@ -52,8 +56,8 @@ func (c AndroidGradleCacheItemCollector) Collect(dir string, cacheLevel cache.Le
 // paths for caching based on the value of cacheLevel. Returns an error if there
 // was an underlying error that would lead to a corrupted cache file, otherwise
 // the given path is skipped.
-func Collect(projectRoot string, cacheLevel cache.Level, cmdFactory command.Factory) error {
-	cacheItemCollector := NewAndroidGradleCacheItemCollector(cmdFactory)
+func Collect(projectRoot string, cacheLevel cache.Level, cmdFactory command.Factory, logger log.Logger) error {
+	cacheItemCollector := NewAndroidGradleCacheItemCollector(cmdFactory, logger)
 	includes, excludes, err := cacheItemCollector.Collect(projectRoot, cacheLevel)
 	if err != nil {
 		return err
@@ -94,13 +98,13 @@ func (c AndroidGradleCacheItemCollector) collectIncludePaths(homeDir, projectDir
 
 		unmodified, err := c.prepareUnmodifiedIndicator(path)
 		if err != nil {
-			log.Debugf(err.Error())
+			c.logger.Debugf(err.Error())
 			unmodified = path
 		}
 
-		md5Hash, err := computeMD5String(unmodified)
+		md5Hash, err := computeMD5String(unmodified, c.logger)
 		if err != nil {
-			log.Warnf("Failed to compute MD5 hash of %s -> %s: %s", path, unmodified, err)
+			c.logger.Warnf("Failed to compute MD5 hash of %s -> %s: %s", path, unmodified, err)
 			return nil
 		}
 
@@ -110,7 +114,7 @@ func (c AndroidGradleCacheItemCollector) collectIncludePaths(homeDir, projectDir
 	}); err != nil {
 		return nil, fmt.Errorf("failed to create cache indicator file: %s", err)
 	}
-	if err := fileutil.WriteStringToFile(lockFilePath, lockfileContent); err != nil {
+	if err := fileutil.NewFileManager().Write(lockFilePath, lockfileContent, 0644); err != nil {
 		return nil, fmt.Errorf("failed to write indicator file: %s", err)
 	}
 
@@ -191,14 +195,14 @@ func (c AndroidGradleCacheItemCollector) prepareUnmodifiedIndicator(indicator st
 	return file.Name(), nil
 }
 
-func computeMD5String(filePath string) (string, error) {
+func computeMD5String(filePath string, logger log.Logger) (string, error) {
 	f, err := os.Open(filePath)
 	if err != nil {
 		return "", err
 	}
 	defer func() {
 		if err := f.Close(); err != nil {
-			log.Errorf("Failed to close %s: %s", filePath, err)
+			logger.Errorf("Failed to close %s: %s", filePath, err)
 		}
 	}()
 
@@ -230,25 +234,25 @@ func (c AndroidGradleCacheItemCollector) collectExcludePaths(homeDir, projectDir
 
 	ver, err := projectGradleVersion(projectDir, c.cmdFactory)
 	if err != nil {
-		log.Warnf("Failed to get project gradle version: %s", err)
+		c.logger.Warnf("Failed to get project gradle version: %s", err)
 		return nil
 	}
 
 	{
 		gradleUserHome := filepath.Join(homeDir, ".gradle")
-		exist, err := pathutil.IsPathExists(gradleUserHome)
+		exist, err := pathutil.NewPathChecker().IsPathExists(gradleUserHome)
 		if err != nil {
-			log.Warnf("Failed to check if gradle user home dir (%s) exists: %s", gradleUserHome, err)
+			c.logger.Warnf("Failed to check if gradle user home dir (%s) exists: %s", gradleUserHome, err)
 			return nil
 		}
 		if !exist {
-			log.Warnf("Gradle user home dir (%s) does not exist", gradleUserHome)
+			c.logger.Warnf("Gradle user home dir (%s) does not exist", gradleUserHome)
 			return nil
 		}
 
 		excludes, err := gradleUserHomeExcludePaths(gradleUserHome, ver)
 		if err != nil {
-			log.Warnf("Failed to collect gradle user home exclude paths: %s", err)
+			c.logger.Warnf("Failed to collect gradle user home exclude paths: %s", err)
 			return nil
 		}
 
@@ -258,7 +262,7 @@ func (c AndroidGradleCacheItemCollector) collectExcludePaths(homeDir, projectDir
 	{
 		excludes, err := projectGradleExcludePaths(projectDir, ver)
 		if err != nil {
-			log.Warnf("Failed to collect project gradle exclude paths: %s", err)
+			c.logger.Warnf("Failed to collect project gradle exclude paths: %s", err)
 			return nil
 		}
 
