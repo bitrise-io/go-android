@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -13,21 +12,35 @@ import (
 	"github.com/bitrise-io/go-utils/v2/command"
 	"github.com/bitrise-io/go-utils/v2/env"
 	"github.com/bitrise-io/go-utils/v2/pathutil"
-	"github.com/hashicorp/go-version"
 )
 
 var cmdFactory = command.NewFactory(env.NewRepository())
 
 const (
-	unsignedJarSignatureMessage = "jar is unsigned"
-	validJarSignatureMessage    = "jar verified"
-	validV2PlusSignatureMessage = "Verifies"
+	unsignedJarSignatureMessage       = "jar is unsigned"
+	validJarSignatureMessage          = "jar verified"
+	validV2PlusSignatureMessage       = "Verifies"
+	notVerifiedV2PlusSignatureMessage = "DOES NOT VERIFY"
+
+	maxAPKSignerReasonLines = 5
 )
 
 var (
 	ErrNotVerified      = errors.New("not verified")
 	ErrNoSignatureFound = errors.New("no signature found")
 )
+
+// apkSignerDNRegex matches the first signer's certificate DN in the output of
+// `apksigner verify --print-certs -v`. The line's format depends on the build-tools version and
+// on whether the APK uses key rotation (APK Signature Scheme v3.1):
+//
+//	build-tools < 37:  Signer #1 certificate DN: ...
+//	                   Signer (minSdkVersion=33, maxSdkVersion=2147483647) certificate DN: ...
+//	build-tools >= 37: V3.0 Signer: certificate DN: ...
+//	                   V3.1 Signer: (minSdkVersion=33, maxSdkVersion=2147483647) certificate DN: ...
+//
+// With key rotation the rotated (current) signer is listed first, followed by the original one.
+var apkSignerDNRegex = regexp.MustCompile(`(?m)^(?:V\d+(?:\.\d+)? )?Signer(?::| #1)?(?: \(minSdkVersion=.*?\))? certificate DN: (.*)`)
 
 // Read ...
 //
@@ -46,6 +59,8 @@ func ReadAABSignature(path string) (string, error) {
 // ReadAPKSignature returns the signature of the provided APK file.
 // If the signature can't be read (unsigned, unexpected certificate printing format, ...), it returns a ErrNoSignatureFound.
 // If the signature is not verified, it returns a ErrNotVerified.
+// The returned error also wraps apksigner's verdict when the fallback to the JAR (v1) signature fails as well,
+// e.g. "no signature found (apksigner: not verified: ERROR: Missing META-INF/MANIFEST.MF)".
 func ReadAPKSignature(apkPath string) (string, error) {
 	idSigPath := apkPath + ".idsig"
 	if _, err := os.Stat(idSigPath); err == nil {
@@ -58,15 +73,22 @@ func ReadAPKSignature(apkPath string) (string, error) {
 		}
 	}
 
-	signature, err := getV23Signature(apkPath)
-	if err != nil && !errors.Is(err, ErrNotVerified) && !errors.Is(err, ErrNoSignatureFound) {
-		return "", err
+	signature, apkSignerErr := getV23Signature(apkPath)
+	if apkSignerErr != nil && !errors.Is(apkSignerErr, ErrNotVerified) && !errors.Is(apkSignerErr, ErrNoSignatureFound) {
+		return "", apkSignerErr
 	}
 	if signature != "" {
 		return signature, nil
 	}
 
-	return getJarSignature(apkPath)
+	signature, err := getJarSignature(apkPath)
+	if err != nil && apkSignerErr != nil {
+		// apksigner's verdict tells an unsigned APK apart from one signed without a v1 signature
+		// while targeting a minSdkVersion below 24, or from one whose signature is broken.
+		return "", fmt.Errorf("%w (apksigner: %w)", err, apkSignerErr)
+	}
+
+	return signature, err
 }
 
 func getV4Signature(apkPath string, idsigPath string) (string, error) {
@@ -94,18 +116,22 @@ func getV2PlusSignature(pathParams []string) (string, error) {
 
 	apkSignerPath, err := sdkModel.LatestBuildToolPath("apksigner")
 	if err != nil {
-		return "", fmt.Errorf("failed to find latest aapt binary, error: %s", err)
+		return "", fmt.Errorf("failed to find latest apksigner binary, error: %s", err)
 	}
 
 	params := append([]string{"verify", "--print-certs", "-v"}, pathParams...)
-	apkSignerOutput, err := cmdFactory.Create(apkSignerPath, params, nil).RunAndReturnTrimmedCombinedOutput()
+	opts := &command.Opts{ErrorFinder: apkSignerErrorFinder}
+	apkSignerOutput, err := cmdFactory.Create(apkSignerPath, params, opts).RunAndReturnTrimmedCombinedOutput()
 	if err != nil {
 		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
-			if strings.Contains(apkSignerOutput, `DOES NOT VERIFY`) {
-				return "", ErrNotVerified
+		if errors.As(err, &exitErr) && strings.Contains(apkSignerOutput, notVerifiedV2PlusSignatureMessage) {
+			if reason := apkSignerFailureReason(apkSignerOutput); reason != "" {
+				return "", fmt.Errorf("%w: %s", ErrNotVerified, reason)
 			}
+			return "", ErrNotVerified
 		}
+		// apksigner also exits with 1 when it crashes, e.g. on a malformed APK; apkSignerErrorFinder
+		// has put the reason into err.
 		return "", err
 	}
 
@@ -113,20 +139,49 @@ func getV2PlusSignature(pathParams []string) (string, error) {
 		return "", ErrNotVerified
 	}
 
-	// apksigner (Android SDK Build-Tools) changed its output format starting with build-tools 37:
-	// - build-tools < 37: "Signer #1 certificate DN: ..."
-	// - build-tools >= 37: "V2 Signer: certificate DN: ..." (scheme label is V1/V2/V3.0/V3.1/V3.2/V4)
-	regex := regexp.MustCompile(`Signer #1 certificate DN: (.*)`)
-	if apkSignerVersion, err := version.NewVersion(filepath.Base(filepath.Dir(apkSignerPath))); err == nil && apkSignerVersion.GreaterThanOrEqual(version.Must(version.NewVersion("37.0.0"))) {
-		regex = regexp.MustCompile(`V\d+(?:\.\d+)? Signer: certificate DN: (.*)`)
-	}
-
-	res := regex.FindAllStringSubmatch(apkSignerOutput, 1)
-	if len(res) > 0 && len(res[0]) > 1 {
-		return res[0][1], nil
+	if match := apkSignerDNRegex.FindStringSubmatch(apkSignerOutput); match != nil {
+		return match[1], nil
 	}
 
 	return "", ErrNoSignatureFound
+}
+
+// apkSignerErrorFinder is a command.ErrorFinder that puts apksigner's failure reason into the command's error,
+// which would otherwise only say "check the command's output for details".
+func apkSignerErrorFinder(output string) []string {
+	if reason := apkSignerFailureReason(output); reason != "" {
+		return []string{reason}
+	}
+
+	return nil
+}
+
+// apkSignerFailureReason condenses the output of a failed apksigner run into a single line:
+// the ERROR lines of an APK that does not verify, or the exception and its causes when apksigner crashed.
+// Stack frames and WARNING lines are left out, and at most maxAPKSignerReasonLines lines are kept.
+func apkSignerFailureReason(output string) string {
+	var lines []string
+
+	for _, line := range strings.Split(output, "\n") {
+		// Stack frames are indented.
+		if strings.HasPrefix(line, "\t") || strings.HasPrefix(line, " ") {
+			continue
+		}
+
+		line = strings.TrimSpace(line)
+		if line == "" || line == notVerifiedV2PlusSignatureMessage || strings.HasPrefix(line, "WARNING:") {
+			continue
+		}
+
+		lines = append(lines, line)
+	}
+
+	if len(lines) > maxAPKSignerReasonLines {
+		omitted := len(lines) - maxAPKSignerReasonLines
+		lines = append(lines[:maxAPKSignerReasonLines], fmt.Sprintf("(%d more lines)", omitted))
+	}
+
+	return strings.Join(lines, "; ")
 }
 
 func getJarSignature(path string) (string, error) {
