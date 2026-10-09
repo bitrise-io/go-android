@@ -86,7 +86,7 @@ func Test_ReadAPKSignature(t *testing.T) {
 		{
 			name:      "Unsigned APK",
 			apkPath:   path.Join(tmpDir, "apks", "app-release-unsigned.apk"),
-			wantError: ErrNoSignatureFound.Error(),
+			wantError: "no signature found (apksigner: not verified: ERROR: Missing META-INF/MANIFEST.MF)",
 		},
 		{
 			name:          "Debug signed APK",
