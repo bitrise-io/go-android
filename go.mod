@@ -1,6 +1,6 @@
 module github.com/bitrise-io/go-android/v2
 
-go 1.22
+go 1.25.0
 
 require (
 	github.com/avast/apkparser v0.0.0-20250626104540-d53391f4d69d
@@ -25,6 +25,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
-	golang.org/x/crypto v0.33.0 // indirect
+	golang.org/x/crypto v0.52.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
