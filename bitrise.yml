@@ -19,7 +19,7 @@ workflows:
             #!/bin/env bash
             set -eo pipefail
             set -x
-            curl -sSfL https://golangci-lint.run/install.sh | sh -s v2.13.2
+            curl -sSfL https://golangci-lint.run/install.sh | sh -s v2.15.0
             ./bin/golangci-lint run --timeout 5m --color always --config .golangci.yml
     - script@1:
         title: go build & test
