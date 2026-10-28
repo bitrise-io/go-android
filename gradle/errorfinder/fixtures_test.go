@@ -1,24 +1,5 @@
 package errorfinder
 
-import (
-	"io"
-	"testing"
-
-	"github.com/stretchr/testify/require"
-)
-
-func write(t *testing.T, writer io.Writer, s string) {
-	t.Helper()
-
-	if s == "" {
-		return
-	}
-
-	n, err := writer.Write([]byte(s))
-	require.NoError(t, err)
-	require.Equal(t, len(s), n)
-}
-
 const kotlinCompileStdout = `> Task :app:preBuild UP-TO-DATE
 > Task :app:compileDebugKotlin FAILED
 `

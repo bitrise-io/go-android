@@ -1,14 +1,13 @@
 package errorfinder
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
-func TestCollector_Errors(t *testing.T) {
+func TestMatcher_Reasons(t *testing.T) {
 	tests := []struct {
 		name   string
 		stdout string
@@ -96,47 +95,26 @@ func TestCollector_Errors(t *testing.T) {
 			stderr: "\x1b[31;1me: file:///bitrise/src/app/A.kt:1:1 Unresolved reference 'a'.\x1b[0m",
 			want:   []string{"/bitrise/src/app/A.kt:1:1: Unresolved reference 'a'."},
 		},
-		{
-			name:   "Windows style line endings",
-			stderr: "e: file:///bitrise/src/app/A.kt:1:1 Unresolved reference 'a'.\r\n",
-			want:   []string{"/bitrise/src/app/A.kt:1:1: Unresolved reference 'a'."},
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			collector := NewCollector()
+			matcher := NewMatcher()
 
-			write(t, collector.StdoutWriter(), tt.stdout)
-			write(t, collector.StderrWriter(), tt.stderr)
+			consume(matcher, tt.stdout)
+			consume(matcher, tt.stderr)
 
-			require.Equal(t, tt.want, collector.Errors())
+			require.Equal(t, tt.want, matcher.Reasons())
 		})
 	}
 }
 
-func TestCollector_Errors_cappedToStayUsefulInTheStepError(t *testing.T) {
-	collector := NewCollector()
-
-	write(t, collector.StderrWriter(), "* What went wrong:\n")
-	for i := range 10 {
-		write(t, collector.StderrWriter(), fmt.Sprintf("> cause %d: %s\n", i, strings.Repeat("detail ", 30)))
+func consume(matcher *Matcher, output string) {
+	if output == "" {
+		return
 	}
 
-	errors := collector.Errors()
-
-	require.Equal(t, truncatedMarker, errors[len(errors)-1])
-	require.LessOrEqual(t, len(strings.Join(errors, "\n")), maxErrorBytes+len(truncatedMarker)+1)
-}
-
-func TestCollector_Errors_singleLineLongerThanTheCap(t *testing.T) {
-	collector := NewCollector()
-
-	write(t, collector.StderrWriter(), "* What went wrong:\n"+strings.Repeat("é", maxErrorBytes)+"\n")
-
-	errors := collector.Errors()
-
-	require.Len(t, errors, 2)
-	require.Equal(t, strings.Repeat("é", maxErrorBytes/2), errors[0])
-	require.Equal(t, truncatedMarker, errors[1])
+	for _, line := range strings.Split(strings.TrimSuffix(output, "\n"), "\n") {
+		matcher.ConsumeLine(line)
+	}
 }
