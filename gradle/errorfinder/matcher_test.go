@@ -20,7 +20,8 @@ func TestMatcher_Reasons(t *testing.T) {
 			stderr: kotlinCompileStderr,
 			want: []string{
 				"Execution failed for task ':app:compileDebugKotlin'.",
-				"/bitrise/src/app/src/main/java/com/example/Foo.kt:4:27: Unresolved reference 'bar'.",
+				"  A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction",
+				"    /bitrise/src/app/src/main/java/com/example/Foo.kt:4:27: Unresolved reference 'bar'.",
 			},
 		},
 		{
@@ -34,7 +35,7 @@ func TestMatcher_Reasons(t *testing.T) {
 			stderr: javacCompileStderr,
 			want: []string{
 				"Execution failed for task ':app:compileDebugJavaWithJavac'.",
-				"/bitrise/src/app/src/main/java/com/example/Bar.java:4: cannot find symbol",
+				"  /bitrise/src/app/src/main/java/com/example/Bar.java:4: cannot find symbol",
 			},
 		},
 		{
@@ -63,8 +64,8 @@ func TestMatcher_Reasons(t *testing.T) {
 			stderr: unresolvedDependencyStderr,
 			want: []string{
 				"Execution failed for task ':app:compileDebugJavaWithJavac'.",
-				"> Could not resolve all files for configuration ':app:debugCompileClasspath'.",
-				"> Could not find com.example:missing:1.0.0.",
+				"  Could not resolve all files for configuration ':app:debugCompileClasspath'.",
+				"    Could not find com.example:missing:1.0.0.",
 			},
 		},
 		{
@@ -73,10 +74,10 @@ func TestMatcher_Reasons(t *testing.T) {
 			stderr: failingTestsStderr,
 			want: []string{
 				"Execution failed for task ':app:testDebugUnitTest'.",
-				"com.example.ExampleUnitTest > addition_isCorrect FAILED",
-				"  org.junit.ComparisonFailure at ExampleUnitTest.java:16",
-				"com.example.ExampleUnitTest > subtraction_isCorrect FAILED",
-				"  java.lang.AssertionError at ExampleUnitTest.java:24",
+				"  com.example.ExampleUnitTest > addition_isCorrect FAILED",
+				"    org.junit.ComparisonFailure at ExampleUnitTest.java:16",
+				"  com.example.ExampleUnitTest > subtraction_isCorrect FAILED",
+				"    java.lang.AssertionError at ExampleUnitTest.java:24",
 			},
 		},
 		{
