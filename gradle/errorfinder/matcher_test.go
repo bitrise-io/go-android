@@ -83,9 +83,9 @@ func TestMatcher_Reasons(t *testing.T) {
 			want: []string{
 				"Execution failed for task ':app:testDebugUnitTest'.",
 				"  com.example.ExampleUnitTest > addition_isCorrect FAILED",
-				"    org.junit.ComparisonFailure at ExampleUnitTest.java:16",
+				"  org.junit.ComparisonFailure at ExampleUnitTest.java:16",
 				"  com.example.ExampleUnitTest > subtraction_isCorrect FAILED",
-				"    java.lang.AssertionError at ExampleUnitTest.java:24",
+				"  java.lang.AssertionError at ExampleUnitTest.java:24",
 			},
 		},
 		{
