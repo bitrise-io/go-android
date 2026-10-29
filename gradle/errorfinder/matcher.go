@@ -36,6 +36,7 @@ var (
 // so it has to see the lines in the order they were written, and one at a time.
 type Matcher struct {
 	blockLines     []blockLine
+	blockDetail    string
 	compilerErrors []compilerError
 	failedTests    []failedTest
 	failedTasks    []string
@@ -156,6 +157,8 @@ func (m *Matcher) consumeBlockLine(line string) bool {
 		m.addBlockLine(trimmed, 0)
 	case isCause:
 		m.addBlockLine(cause, indent/gradleCauseIndent+1)
+	case len(m.blockLines) == 1 && m.blockDetail == "":
+		m.blockDetail = trimmed
 	}
 
 	return true
@@ -179,7 +182,7 @@ func (m *Matcher) addCompilerError(e compilerError) {
 // cause. That cause is dropped, because it is the one the findings answer: for a Kotlin failure it only
 // says "Compilation error. See log for more details".
 func (m *Matcher) nestUnderBlock(findings []string) []string {
-	block := m.blockLines
+	block := m.effectiveBlockLines()
 	if len(findings) > 0 && len(block) > 1 {
 		block = block[:len(block)-1]
 	}
@@ -195,6 +198,16 @@ func (m *Matcher) nestUnderBlock(findings []string) []string {
 	}
 
 	return lines
+}
+
+// effectiveBlockLines adds the line under the problem when Gradle gave no causes for it. A task that
+// does not exist is reported that way, and the problem on its own reads "Selection failed".
+func (m *Matcher) effectiveBlockLines() []blockLine {
+	if len(m.blockLines) != 1 || m.blockDetail == "" {
+		return m.blockLines
+	}
+
+	return []blockLine{m.blockLines[0], {text: m.blockDetail, depth: 1}}
 }
 
 func (m *Matcher) compilerErrorLines() []string {

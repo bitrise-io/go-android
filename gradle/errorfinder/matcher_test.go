@@ -59,6 +59,14 @@ func TestMatcher_Reasons(t *testing.T) {
 			want:   []string{"Task 'assembleFoo' not found in root project 'MyApp'. Some candidates are: 'assembleDebug'."},
 		},
 		{
+			name:   "unknown task, with no cause under the problem",
+			stderr: selectionFailedStderr,
+			want: []string{
+				"Selection failed",
+				"  Task 'assembleFoo' not found in root project 'MyApp' and its subprojects.",
+			},
+		},
+		{
 			name:   "unresolved dependency",
 			stdout: "> Task :app:compileDebugJavaWithJavac FAILED",
 			stderr: unresolvedDependencyStderr,

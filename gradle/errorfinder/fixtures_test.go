@@ -58,6 +58,17 @@ Task 'assembleFoo' not found in root project 'MyApp'. Some candidates are: 'asse
 > Run gradlew tasks to get a list of available tasks.
 `
 
+const selectionFailedStderr = `
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Selection failed
+  Task 'assembleFoo' not found in root project 'MyApp' and its subprojects.
+
+* Try:
+> Run gradlew tasks to get a list of available tasks.
+`
+
 const unresolvedDependencyStderr = `
 FAILURE: Build failed with an exception.
 
