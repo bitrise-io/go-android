@@ -124,6 +124,15 @@ func TestMatcher_Reasons(t *testing.T) {
 			},
 		},
 		{
+			name:   "a task line of the other stream inside the block",
+			stderr: interleavedTaskLineStderr,
+			want: []string{
+				"Execution failed for task ':app:processDebugNavigationResources'.",
+				"  Could not resolve all files for configuration ':app:debugRuntimeClasspath'.",
+				"    Could not find com.example:missing:1.0.0.",
+			},
+		},
+		{
 			name:   "failing unit tests",
 			stdout: failingTestsStdout,
 			stderr: failingTestsStderr,

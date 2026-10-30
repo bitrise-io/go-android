@@ -169,3 +169,16 @@ Execution failed for task ':app:processDebugResources'.
 * Try:
 > Run with --stacktrace option to get the stack trace.
 `
+
+const interleavedTaskLineStderr = `
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:processDebugNavigationResources'.
+> Task :app:processDebugNavigationResources FAILED
+> Could not resolve all files for configuration ':app:debugRuntimeClasspath'.
+   > Could not find com.example:missing:1.0.0.
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+`
