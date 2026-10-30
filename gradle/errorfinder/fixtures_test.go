@@ -108,3 +108,64 @@ Execution failed for task ':app:testDebugUnitTest'.
 * Try:
 > Run with --scan to get full insights.
 `
+
+const javacCompileOutputStderr = `/bitrise/src/app/src/main/java/com/example/Bar.java:4: error: cannot find symbol
+        int x = y;
+                ^
+  symbol:   variable y
+  location: class Bar
+1 error
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugJavaWithJavac'.
+> Compilation failed; see the compiler output below.
+  /bitrise/src/app/src/main/java/com/example/Bar.java:4: error: cannot find symbol
+          int x = y;
+                  ^
+    symbol:   variable y
+    location: class Bar
+  1 error
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+`
+
+const resourceLinkingStderr = `
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:processDebugResources'.
+> A failure occurred while executing com.android.build.gradle.internal.res.LinkApplicationAndroidResourcesTask$TaskAction
+   > Android resource linking failed
+     com.example.app-main-5:/layout/broken_screen.xml:5: error: resource string/missing (aka com.example:string/missing) not found.
+     error: failed linking file resources.
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+`
+
+const manyResourceErrorsStderr = `
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:processDebugResources'.
+> A failure occurred while executing com.android.build.gradle.internal.res.LinkApplicationAndroidResourcesTask$TaskAction
+   > Android resource linking failed
+     com.example.app-main-5:/layout/a.xml:1: error: resource string/a not found.
+     com.example.app-main-5:/layout/b.xml:2: error: resource string/b not found.
+     com.example.app-main-5:/layout/c.xml:3: error: resource string/c not found.
+     com.example.app-main-5:/layout/d.xml:4: error: resource string/d not found.
+     com.example.app-main-5:/layout/e.xml:5: error: resource string/e not found.
+     com.example.app-main-5:/layout/f.xml:6: error: resource string/f not found.
+     com.example.app-main-5:/layout/g.xml:7: error: resource string/g not found.
+     com.example.app-main-5:/layout/h.xml:8: error: resource string/h not found.
+     com.example.app-main-5:/layout/i.xml:9: error: resource string/i not found.
+     com.example.app-main-5:/layout/j.xml:10: error: resource string/j not found.
+     com.example.app-main-5:/layout/k.xml:11: error: resource string/k not found.
+     error: failed linking file resources.
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+`
