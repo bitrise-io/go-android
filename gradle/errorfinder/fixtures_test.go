@@ -174,6 +174,7 @@ const interleavedTaskLineStderr = `
 FAILURE: Build failed with an exception.
 
 * What went wrong:
+[Incubating] Problems report is available at: file:///bitrise/src/build/reports/problems/problems-report.html
 Execution failed for task ':app:processDebugNavigationResources'.
 > Task :app:processDebugNavigationResources FAILED
 > Could not resolve all files for configuration ':app:debugRuntimeClasspath'.

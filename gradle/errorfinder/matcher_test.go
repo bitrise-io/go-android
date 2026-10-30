@@ -124,7 +124,7 @@ func TestMatcher_Reasons(t *testing.T) {
 			},
 		},
 		{
-			name:   "a task line of the other stream inside the block",
+			name:   "lines of the other stream inside the block",
 			stderr: interleavedTaskLineStderr,
 			want: []string{
 				"Execution failed for task ':app:processDebugNavigationResources'.",
